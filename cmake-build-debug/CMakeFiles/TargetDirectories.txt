@@ -1,0 +1,3 @@
+C:/StudiesNew/Ccourse/Assembler Project/cmake-build-debug/CMakeFiles/Assembler_Project.dir
+C:/StudiesNew/Ccourse/Assembler Project/cmake-build-debug/CMakeFiles/edit_cache.dir
+C:/StudiesNew/Ccourse/Assembler Project/cmake-build-debug/CMakeFiles/rebuild_cache.dir
