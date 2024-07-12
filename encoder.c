@@ -1,28 +1,33 @@
-
 #include "encoder.h"
 
 int getOpcodeValue(const char* opcode_str) {
-    for (int i = 0; i < NUM_OPCODES; i++) {
+    int i;
+
+    /* Loop through the opcodes to find a match */
+    for (i = 0; i < NUM_OPCODES; i++) {
         if (strcmp(opcode_str, opcodes[i].name) == 0) {
             return opcodes[i].value;
         }
     }
-    return -1; // Invalid opcode
+
+    return -1; /* Invalid opcode */
 }
 
 AddressingMethod getAddressingMethod(const char* operand) {
+    /* Determine the addressing method based on the operand format */
     if (operand[0] == '#') {
         return ADDR_IMMEDIATE;
     } else if (operand[0] == 'r' && operand[1] >= '0' && operand[1] <= '7' && operand[2] == '\0') {
         return ADDR_REGISTER;
     } else {
-        return ADDR_DIRECT;  // For now, assume it's a label if not immediate or register
+        return ADDR_DIRECT;  /* For now, assume it's a label if not immediate or register */
     }
 }
 
 Word encodeInstructionWord(const Instruction* inst) {
     Word encodedInst = 0;
 
+    /* Encode the instruction word with opcode and addressing methods */
     encodedInst |= (inst->opcode & 0xF) << 11;
     encodedInst |= ((inst->src_method & 0x1) << 7) |
                    ((inst->src_method & 0x2) << 7) |
@@ -38,29 +43,41 @@ Word encodeInstructionWord(const Instruction* inst) {
 }
 
 void encodeInstruction(const char* line) {
-    Instruction inst = {0};
+    Instruction inst;
     char opcode[5], src[31], dst[31];
+    Word encodedInst;
+    int value;
+
+    /* Initialize the instruction structure */
+    inst.opcode = 0;
+    inst.src_method = 0;
+    inst.dst_method = 0;
+    inst.are = 0;
+
+    /* Parse the line to extract opcode, source, and destination operands */
     sscanf(line, "%4s %30[^,], %30s", opcode, src, dst);
 
     inst.opcode = getOpcodeValue(opcode);
     inst.src_method = getAddressingMethod(src);
     inst.dst_method = getAddressingMethod(dst);
-    inst.are = 0; // To be implemented later
+    inst.are = 0; /* To be implemented later */
 
-    Word encodedInst = encodeInstructionWord(&inst);
+    encodedInst = encodeInstructionWord(&inst);
     memory[IC - STARTING_ADDRESS] = encodedInst;
     IC++;
 
+    /* Handle source operand encoding */
     if (inst.src_method == ADDR_IMMEDIATE) {
-        int value = atoi(src + 1);
+        value = atoi(src + 1);
         memory[IC - STARTING_ADDRESS] = (value & 0x7FFF) << 3;
         IC++;
     } else if (inst.src_method == ADDR_DIRECT) {
         IC++;
     }
 
+    /* Handle destination operand encoding */
     if (inst.dst_method == ADDR_IMMEDIATE) {
-        int value = atoi(dst + 1);
+        value = atoi(dst + 1);
         memory[IC - STARTING_ADDRESS] = (value & 0x7FFF) << 3;
         IC++;
     } else if (inst.dst_method == ADDR_DIRECT) {

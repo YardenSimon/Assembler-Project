@@ -67,6 +67,24 @@ build CMakeFiles/Assembler_Project.dir/macros.c.obj: C_COMPILER__Assembler_Proje
   OBJECT_DIR = CMakeFiles\Assembler_Project.dir
   OBJECT_FILE_DIR = CMakeFiles\Assembler_Project.dir
 
+build CMakeFiles/Assembler_Project.dir/assembler.c.obj: C_COMPILER__Assembler_Project_Debug C$:/StudiesNew/Ccourse/Assembler$ Project/assembler.c || cmake_object_order_depends_target_Assembler_Project
+  DEP_FILE = CMakeFiles\Assembler_Project.dir\assembler.c.obj.d
+  FLAGS = -g -fdiagnostics-color=always -std=gnu90
+  OBJECT_DIR = CMakeFiles\Assembler_Project.dir
+  OBJECT_FILE_DIR = CMakeFiles\Assembler_Project.dir
+
+build CMakeFiles/Assembler_Project.dir/encoder.c.obj: C_COMPILER__Assembler_Project_Debug C$:/StudiesNew/Ccourse/Assembler$ Project/encoder.c || cmake_object_order_depends_target_Assembler_Project
+  DEP_FILE = CMakeFiles\Assembler_Project.dir\encoder.c.obj.d
+  FLAGS = -g -fdiagnostics-color=always -std=gnu90
+  OBJECT_DIR = CMakeFiles\Assembler_Project.dir
+  OBJECT_FILE_DIR = CMakeFiles\Assembler_Project.dir
+
+build CMakeFiles/Assembler_Project.dir/first_pass.c.obj: C_COMPILER__Assembler_Project_Debug C$:/StudiesNew/Ccourse/Assembler$ Project/first_pass.c || cmake_object_order_depends_target_Assembler_Project
+  DEP_FILE = CMakeFiles\Assembler_Project.dir\first_pass.c.obj.d
+  FLAGS = -g -fdiagnostics-color=always -std=gnu90
+  OBJECT_DIR = CMakeFiles\Assembler_Project.dir
+  OBJECT_FILE_DIR = CMakeFiles\Assembler_Project.dir
+
 
 # =============================================================================
 # Link build statements for EXECUTABLE target Assembler_Project
@@ -75,7 +93,7 @@ build CMakeFiles/Assembler_Project.dir/macros.c.obj: C_COMPILER__Assembler_Proje
 #############################################
 # Link the executable Assembler_Project.exe
 
-build Assembler_Project.exe: C_EXECUTABLE_LINKER__Assembler_Project_Debug CMakeFiles/Assembler_Project.dir/main.c.obj CMakeFiles/Assembler_Project.dir/word_check.c.obj CMakeFiles/Assembler_Project.dir/macros.c.obj
+build Assembler_Project.exe: C_EXECUTABLE_LINKER__Assembler_Project_Debug CMakeFiles/Assembler_Project.dir/main.c.obj CMakeFiles/Assembler_Project.dir/word_check.c.obj CMakeFiles/Assembler_Project.dir/macros.c.obj CMakeFiles/Assembler_Project.dir/assembler.c.obj CMakeFiles/Assembler_Project.dir/encoder.c.obj CMakeFiles/Assembler_Project.dir/first_pass.c.obj
   FLAGS = -g
   LINK_LIBRARIES = -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32
   OBJECT_DIR = CMakeFiles\Assembler_Project.dir

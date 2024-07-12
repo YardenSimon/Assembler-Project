@@ -8,4 +8,4 @@ int isLabel(const char* line);
 void getLabelName(const char* line, char* label);
 void firstPass(const char* filename);
 
-#endif // FIRST_PASS_H
+#endif /* FIRST_PASS_H */
