@@ -59,8 +59,6 @@ void handle_macro_inside(const char *macro_name, FILE *file) {
             /* Save the macro */
             if (macro_count < MAX_MACROS) {
                 macros[macro_count++] = macro;
-            } else {
-                printf("Error: Macro storage limit reached.\n");
             }
             return;
         }
@@ -70,47 +68,59 @@ void handle_macro_inside(const char *macro_name, FILE *file) {
     }
 }
 
-/* Function to replace macros and write to new file */
 void replace_macros(const char *input_name, const char *output_name) {
     FILE *input_file = fopen(input_name, "r");
     FILE *output_file = fopen(output_name, "w");
     char line[256];
     int in_macro_definition = 0;
-    char first_word[256];
-    char macro_name[256];
-    int is_macro;
-    int i;
+    char macro_name[256] = {0};
+    char macro_content[1000] = {0};  // Temporary storage for macro content
 
     if (input_file == NULL || output_file == NULL) {
-        printf("Error: Unable to open files.\n");
         return;
     }
 
     while (fgets(line, sizeof(line), input_file)) {
-        /* Remove trailing newline and carriage return characters */
-        line[strcspn(line, "\r\n")] = 0;
+        line[strcspn(line, "\n")] = 0; // Remove newline
 
-        first_word[0] = '\0';
+        char first_word[256];
         sscanf(line, "%s", first_word);
 
-        if (strcmp(first_word, "macro") == 0) {
+        if (strcmp(first_word, "macr") == 0) {
             in_macro_definition = 1;
             sscanf(line, "%*s %s", macro_name);
-            handle_macro_inside(macro_name, input_file);
-        } else if (strcmp(line, "endmacro") == 0) {
+            macro_content[0] = '\0';  // Reset macro content
+            continue;
+        }
+
+        if (strcmp(line, "endmacr") == 0) {
+            if (in_macro_definition) {
+                // Add the macro to the macros array
+                if (macro_count < MAX_MACROS) {
+                    strncpy(macros[macro_count].name, macro_name, sizeof(macros[macro_count].name) - 1);
+                    strncpy(macros[macro_count].content, macro_content, sizeof(macros[macro_count].content) - 1);
+                    macro_count++;
+                }
+            }
             in_macro_definition = 0;
-        } else if (!in_macro_definition) {
-            /* Check if the line starts with a macro name */
-            is_macro = 0;
+            macro_name[0] = '\0';
+            continue;
+        }
+
+        if (in_macro_definition) {
+            strncat(macro_content, line, sizeof(macro_content) - strlen(macro_content) - 1);
+            strncat(macro_content, "\n", sizeof(macro_content) - strlen(macro_content) - 1);
+        } else {
+            // Check if line starts with a macro name and replace if necessary
+            int is_macro = 0;
+            int i = 0;
             for (i = 0; i < macro_count; i++) {
-                if (strncmp(line, macros[i].name, strlen(macros[i].name)) == 0) {
-                    /* Replace with macro content */
+                if (strcmp(first_word, macros[i].name) == 0) {
                     fputs(macros[i].content, output_file);
                     is_macro = 1;
                     break;
                 }
             }
-            /* If it's not a macro, write the line as is */
             if (!is_macro) {
                 fputs(line, output_file);
                 fputc('\n', output_file);

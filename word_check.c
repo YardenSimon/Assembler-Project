@@ -32,7 +32,6 @@ void process_line(const char *line, FILE *file) {
     strncpy(buffer, line, sizeof(buffer));
     buffer[sizeof(buffer) - 1] = '\0'; /* Ensure null termination */
 
-    /* Ignore comment lines */
     if (line[0] == ';') {
         return;
     }
