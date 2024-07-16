@@ -1,85 +1,74 @@
-
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-#include "macros.h"  /* Include the header file for macros handling */
+#include "macros.h"
 
-/* Define known mnemonics and instruction words */
-const char *group1[] = {"mov", "cmp", "add", "sub", "lea"};
-const int group1_count = 5;
 
-const char *group2[] = {"clr", "not", "inc", "dec", "jmp", "bne", "red", "prn", "jsr"};
-const int group2_count = 9;
+/* Function prototype for validate_assembly_file
+void validate_assembly_file(const char *filename);*/
 
-const char *group3[] = {"rts", "stop"};
-const int group3_count = 2;
+int main() {
+    const char *input =
+            "MAIN: add r3, LIST\n"
+            "LOOP: prn #48\n"
+            "      macr m_macr\n"
+            "      cmp r3, #-6\n"
+            "      bne END\n"
+            "endmacr\n"
+            "      lea STR, r6\n"
+            "      inc r6\n"
+            "      mov *r6, K\n"
+            "      sub r1, r4\n"
+            "      m_macr\n"
+            "      dec K\n"
+            "      jmp LOOP\n"
+            "END:  stop\n"
+            "STR:  .string \"abcd\"\n"
+            "LIST: .data 6, -9\n"
+            "      .data -100\n"
+            "K:    .data 31\n";
 
-const char *instruction_words[] = {".data", ".string", ".entry", ".extern"};
-const int instruction_words_count = 4;
+    // Create temporary input file
+    FILE *temp_input = fopen("temp_input.as", "w");
+    if (temp_input == NULL) {
+        perror("Failed to create temporary input file");
+        return 1;
+    }
+    fputs(input, temp_input);
+    fclose(temp_input);
 
-/* Function to check if a token is a known word */
-int is_known_word(const char *token) {
-    return word_in_list(token, group1, group1_count) ||
-           word_in_list(token, group2, group2_count) ||
-           word_in_list(token, group3, group3_count) ||
-           word_in_list(token, instruction_words, instruction_words_count);
-}
+    // Create output file
+    const char *output_filename = "output.as";
 
-/* Function to process and validate each line of the input file */
-void process_line(const char *line, FILE *file) {
-    char buffer[256];
-    char *token;
+    // Process macros (only once)
+    printf("Processing macros:\n");
+    replace_macros("temp_input.as", output_filename);
 
-    strncpy(buffer, line, sizeof(buffer));
-    buffer[sizeof(buffer) - 1] = '\0'; /* Ensure null termination */
-
-    /* Ignore comment lines */
-    if (line[0] == ';') {
-        return;
+    // Print defined macros
+    printf("Defined macros:\n");
+    int i = 0;
+    for(i = 0; i < macro_count; i++) {
+        printf("Macro name: %s\n", macros[i].name);
+        printf("Macro content:\n%s", macros[i].content);
+        printf("--------------------\n");
     }
 
-    /* Tokenize the line to get the first word */
-    token = strtok(buffer, " \t\n");
-
-    /* Handle macro definitions */
-    if (token != NULL && strcmp(token, "macro") == 0) {
-        token = strtok(NULL, " \t\n");
-        if (token != NULL && can_be_macro_name(token)) {
-            /* Check if there are more tokens, which would be invalid */
-            if (strtok(NULL, " \t\n") != NULL) {
-                printf("Error: Extra tokens after macro name: %s\n", line);
-            } else {
-                handle_macro_inside(token, file);
-            }
-        } else {
-            printf("Error: Invalid macro name: %s\n", token);
-        }
-        return;
+    // Print the contents of the output file
+    FILE *output_file = fopen(output_filename, "r");
+    if (output_file == NULL) {
+        perror("Failed to open output file");
+        return 1;
     }
 
-    /* Check if the first word is a known word */
-    if (token != NULL) {
-        if (is_known_word(token)) {
-            /* Valid known word processing (without operands) */
-        } else {
-            printf("Error: Unknown word: %s\n", token);
-        }
-    }
-}
-
-/* Function to read and validate the input file */
-void validate_assembly_file(const char *filename) {
-    FILE *file = fopen(filename, "r");
+    printf("Processed output:\n\n");
     char line[256];
-
-    if (file == NULL) {
-        perror("Error opening file");
-        return;
+    while (fgets(line, sizeof(line), output_file)) {
+        printf("%s", line);
     }
+    fclose(output_file);
 
-    while (fgets(line, sizeof(line), file)) {
-        /* Process each line individually */
-        process_line(line, file);
-    }
+    // Clean up
+    remove("temp_input.as");
 
-    fclose(file);
+    return 0;
 }
