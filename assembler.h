@@ -10,7 +10,7 @@
 #define RAM_SIZE 4096
 #define STARTING_ADDRESS 100
 #define MAX_SYMBOLS 1000
-#define MAX_LINE_LENGTH 81
+#define MAX_LINE_LENGTH 80
 #define NUM_OPCODES 16
 
 typedef unsigned short Word;
