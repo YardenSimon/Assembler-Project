@@ -1,4 +1,4 @@
-/* Created by yarde on 06/07/2024. */
+
 #include "assembler.h"
 
 /* Define the opcodes and their values */
