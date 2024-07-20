@@ -11,10 +11,10 @@
 #define STARTING_ADDRESS 100
 #define MAX_SYMBOLS 1000
 #define MAX_LINE_LENGTH 81
+#define NUM_OPCODES 16
 
 typedef unsigned short Word;
 
-/* Addressing method enumeration */
 typedef enum {
     ADDR_IMMEDIATE = 0,
     ADDR_DIRECT = 1,
@@ -22,33 +22,33 @@ typedef enum {
     ADDR_REGISTER = 3
 } AddressingMethod;
 
-/* Instruction structure */
 typedef struct {
-    unsigned int are : 3;     /* A,R,E field (bits 0-2) */
-    unsigned int dst_method : 4;  /* Destination addressing method (bits 3-6) */
-    unsigned int src_method : 4;  /* Source addressing method (bits 7-10) */
-    unsigned int opcode : 4;  /* Opcode (bits 11-14) */
+    unsigned int are : 3;       /* A,R,E field (bits 0-2) */
+    unsigned int dst_method : 4; /* Destination addressing method (bits 3-6) */
+    unsigned int src_method : 4; /* Source addressing method (bits 7-10) */
+    unsigned int opcode : 4;    /* Opcode (bits 11-14) */
 } Instruction;
 
-/* Symbol structure */
 typedef struct {
     char name[31];
     int address;
 } Symbol;
 
-/* Opcode information structure */
 typedef struct {
     const char* name;
     int value;
 } OpcodeInfo;
 
-#define NUM_OPCODES 16
-
-/* Extern declarations for global variables */
+/* Global variables */
 extern const OpcodeInfo opcodes[NUM_OPCODES];
 extern Word memory[RAM_SIZE];
-extern Symbol symbolTable[MAX_SYMBOLS];
-extern int symbolCount;
+extern Symbol symbol_table[MAX_SYMBOLS];
+extern int symbol_count;
 extern int IC, DC;
+
+/* Function prototypes */
+void init_assembler(void);
+int find_opcode(const char* mnemonic);
+void add_to_memory(Word value);
 
 #endif /* ASSEMBLER_H */

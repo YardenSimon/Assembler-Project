@@ -4,9 +4,9 @@
 #include "assembler.h"
 
 /* Function prototypes */
-int getOpcodeValue(const char* opcode_str);
-AddressingMethod getAddressingMethod(const char* operand);
-Word encodeInstructionWord(const Instruction* inst);
-void encodeInstruction(const char* line);
+int get_opcode_value(const char* opcode_str);
+AddressingMethod get_addressing_method(const char* operand);
+Word encode_instruction_word(const Instruction* inst);
+void encode_instruction(const char* line);
 
 #endif /* ENCODER_H */
