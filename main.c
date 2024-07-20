@@ -3,9 +3,8 @@
 #include <string.h>
 #include "macros.h"
 
-
-/* Function prototype for validate_assembly_file
-void validate_assembly_file(const char *filename);*/
+// Declare findCommand function
+int findCommand(const char* line);
 
 int main() {
     const char *input =
@@ -53,17 +52,30 @@ int main() {
         printf("--------------------\n");
     }
 
-    // Print the contents of the output file
+    // Open the processed output file for reading
     FILE *output_file = fopen(output_filename, "r");
     if (output_file == NULL) {
         perror("Failed to open output file");
         return 1;
     }
 
-    printf("Processed output:\n\n");
+    printf("Processed output with opcode checking:\n\n");
     char line[256];
     while (fgets(line, sizeof(line), output_file)) {
-        printf("%s", line);
+        // Remove newline character if present
+        line[strcspn(line, "\n")] = 0;
+
+        // Check for opcode
+        int cmdPos = findCommand(line);
+        if (cmdPos != -1) {
+            printf("Line: %s\n", line);
+            printf("Opcode found at position: %d\n", cmdPos);
+            printf("Opcode: %.*s\n", (int)(strchr(line + cmdPos, ' ') - (line + cmdPos)), line + cmdPos);
+        } else {
+            printf("Line: %s\n", line);
+            printf("No valid opcode found\n");
+        }
+        printf("--------------------\n");
     }
     fclose(output_file);
 
