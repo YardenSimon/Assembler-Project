@@ -4,7 +4,7 @@
 #include <string.h>
 
 int find_command(const char* line) {
-    int i, j;
+    int j;
     int cmdLen;
 
     /* Skip spaces and labels */
