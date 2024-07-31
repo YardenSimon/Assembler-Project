@@ -1,3 +1,8 @@
 # ninja log v5
-0	83	7407737090954180	CMakeFiles/Assembler_Project.dir/main.c.obj	fe828f75f7fc71c3
-84	241	7407737092454475	Assembler_Project.exe	4fbc7ba63e15971f
+2	293	7431763447005901	CMakeFiles/Assembler_Project.dir/main.c.obj	fe828f75f7fc71c3
+35	310	7431763447155909	CMakeFiles/Assembler_Project.dir/first_pass.c.obj	eb725b82f0a04d75
+310	540	7431763449513357	Assembler_Project.exe	a2992682d7d87fcc
+21	274	7431763446711036	CMakeFiles/Assembler_Project.dir/assembler.c.obj	91c29440b7836f74
+14	306	7431763447115905	CMakeFiles/Assembler_Project.dir/word_check.c.obj	bd5ee128e0e82193
+8	307	7431763447165911	CMakeFiles/Assembler_Project.dir/macros.c.obj	51e6789d13d90fb6
+28	308	7431763447155909	CMakeFiles/Assembler_Project.dir/encoder.c.obj	a01159f1caf299c3

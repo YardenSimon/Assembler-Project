@@ -1,0 +1,37 @@
+#include <stdio.h>
+#include "macros.h"
+
+/* Function to display usage instructions */
+void print_usage(const char *prog_name) {
+    printf("Usage: %s <input file> <output file>\n", prog_name);
+}
+
+/* Function prototype for validate_assembly_file */
+void validate_assembly_file(const char *filename);
+
+int main(int argc, char *argv[]) {
+    const char *input_file;
+    const char *output_file;
+
+    /* Check if the correct number of arguments is provided */
+    if (argc != 3) {
+        print_usage(argv[0]);
+        return 1;
+    }
+
+    /* Extract input and output file names from the command line arguments */
+    input_file = argv[1];
+    output_file = argv[2];
+
+    /* Replace macros in the input file and write the output to the specified output file */
+    replace_macros(input_file, output_file);
+
+    /* Validate the resulting assembly file */
+    validate_assembly_file(output_file);
+
+    /* Indicate successful completion */
+    printf("Processing complete. Output written to %s\n", output_file);
+
+    return 0;
+}
+
