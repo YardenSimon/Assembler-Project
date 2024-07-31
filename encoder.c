@@ -101,11 +101,11 @@ static Word encode_instruction_word(const Instruction* inst) {
  * Returns:
  *   1 if the symbol is external, 0 otherwise
  */
-static int is_external_symbol(const char* symbol) {
-    /* This function should be implemented based on how external symbols are tracked */
-    /* For now, it always returns false */
-    return 0;
-}
+/*static int is_external_symbol(const char* symbol) { */
+/* This function should be implemented based on how external symbols are tracked */
+/* For now, it always returns false */
+/* return 0;*/
+/* }*/
 
 /* Encodes a single instruction and reserves space for additional words.
  *
@@ -157,6 +157,7 @@ static void encode_instruction(const char* line) {
 void encode_first_pass(const char* filename) {
     FILE* file = fopen(filename, "r");
     char line[MAX_LINE_LENGTH];
+    char* instruction = strchr(line, ':');
 
     if (file == NULL) {
         printf("Error opening file: %s\n", filename);
@@ -174,7 +175,7 @@ void encode_first_pass(const char* filename) {
         }
 
         /* Handle labels (assuming labels are already processed) */
-        char* instruction = strchr(line, ':');
+
         if (instruction) {
             instruction++; /* Move past the colon */
             while (*instruction == ' ' || *instruction == '\t') instruction++; /* Skip whitespace */

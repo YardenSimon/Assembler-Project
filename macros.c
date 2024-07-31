@@ -74,28 +74,30 @@ void replace_macros(const char *input_name, const char *output_name) {
     char line[256];
     int in_macro_definition = 0;
     char macro_name[256] = {0};
-    char macro_content[1000] = {0};  // Temporary storage for macro content
+    char macro_content[1000] = {0};  /* Temporary storage for macro content*/
+    char first_word[256];
+    int is_macro = 0;
+    int i = 0;
 
     if (input_file == NULL || output_file == NULL) {
         return;
     }
 
     while (fgets(line, sizeof(line), input_file)) {
-        line[strcspn(line, "\n")] = 0; // Remove newline
+        line[strcspn(line, "\n")] = 0; /* Remove newline*/
 
-        char first_word[256];
         sscanf(line, "%s", first_word);
 
         if (strcmp(first_word, "macr") == 0) {
             in_macro_definition = 1;
             sscanf(line, "%*s %s", macro_name);
-            macro_content[0] = '\0';  // Reset macro content
+            macro_content[0] = '\0';  /* Reset macro content*/
             continue;
         }
 
         if (strcmp(line, "endmacr") == 0) {
             if (in_macro_definition) {
-                // Add the macro to the macros array
+                /* Add the macro to the macros array*/
                 if (macro_count < MAX_MACROS) {
                     strncpy(macros[macro_count].name, macro_name, sizeof(macros[macro_count].name) - 1);
                     strncpy(macros[macro_count].content, macro_content, sizeof(macros[macro_count].content) - 1);
@@ -111,9 +113,8 @@ void replace_macros(const char *input_name, const char *output_name) {
             strncat(macro_content, line, sizeof(macro_content) - strlen(macro_content) - 1);
             strncat(macro_content, "\n", sizeof(macro_content) - strlen(macro_content) - 1);
         } else {
-            // Check if line starts with a macro name and replace if necessary
-            int is_macro = 0;
-            int i = 0;
+            /* Check if line starts with a macro name and replace if necessary*/
+
             for (i = 0; i < macro_count; i++) {
                 if (strcmp(first_word, macros[i].name) == 0) {
                     fputs(macros[i].content, output_file);
