@@ -1,3 +1,5 @@
+/* encoder.c */
+
 #include "encoder.h"
 #include <string.h>
 #include <stdlib.h>
@@ -6,8 +8,10 @@
 #define NUM_OPCODES 16
 #define MAX_OPERAND_LENGTH 20
 
-extern int IC;  /* Declare IC (Instruction Counter) as extern */
-extern MachineWord memory[]; /* Declare memory array as extern, used to store encoded instructions */
+extern int IC;
+extern int DC;
+extern MachineWord* memory;
+extern int memory_size;
 
 /* Enum to represent different addressing methods for operands */
 typedef enum {
@@ -36,9 +40,7 @@ static int get_opcode_value(const char* opcode_name);
 static AddressingMethod get_addressing_method(const char* operand);
 static void encode_operand(AddressingMethod method, const char* operand);
 
-/* Main function to encode a single instruction
- * This function parses the instruction, identifies its components,
- * and encodes them into machine code */
+/* Encode a single instruction into machine code */
 void encode_instruction(const char* instruction) {
     char opcode_name[5];
     char source[MAX_OPERAND_LENGTH], destination[MAX_OPERAND_LENGTH];
@@ -53,12 +55,21 @@ void encode_instruction(const char* instruction) {
     src_method = get_addressing_method(source);
     dst_method = get_addressing_method(destination);
 
-    /* Encode first word of instruction
-     * This includes the opcode and addressing methods for both operands */
+    /* Encode first word of instruction */
     encoded_word |= (opcode_value & 0xF) << 11;
     encoded_word |= (src_method & 0xF) << 7;
     encoded_word |= (dst_method & 0xF) << 3;
     /* ARE bits set to 0 for now, will be updated in second pass if needed */
+
+    if (IC - 100 + DC >= memory_size) {
+        memory_size *= 2;
+        MachineWord* temp = (MachineWord*)realloc(memory, memory_size * sizeof(MachineWord));
+        if (temp == NULL) {
+            fprintf(stderr, "Error: Memory reallocation failed\n");
+            exit(1);
+        }
+        memory = temp;
+    }
 
     memory[IC - 100] = encoded_word;
     IC++;
@@ -68,8 +79,7 @@ void encode_instruction(const char* instruction) {
     encode_operand(dst_method, destination);
 }
 
-/* Function to get the numeric value of an opcode
- * It searches through the opcodes array to find a match */
+/* Get the numeric value of an opcode */
 static int get_opcode_value(const char* opcode_name) {
     int i;
     for (i = 0; i < NUM_OPCODES; i++) {
@@ -80,8 +90,7 @@ static int get_opcode_value(const char* opcode_name) {
     return -1; /* Invalid opcode */
 }
 
-/* Function to determine the addressing method of an operand
- * It examines the format of the operand string */
+/* Determine the addressing method of an operand */
 static AddressingMethod get_addressing_method(const char* operand) {
     if (operand[0] == '#') {
         return ADDR_IMMEDIATE;
@@ -95,26 +104,22 @@ static AddressingMethod get_addressing_method(const char* operand) {
     }
 }
 
-/* Function to encode an individual operand
- * This function handles the encoding specifics for each addressing method */
+/* Encode an individual operand */
 static void encode_operand(AddressingMethod method, const char* operand) {
     MachineWord encoded_operand = 0;
 
     switch (method) {
         case ADDR_IMMEDIATE:
-            /* For immediate addressing, convert the value to binary */
             encoded_operand = (MachineWord)(atoi(operand + 1) & 0x7FFF);  /* +1 to skip '#' */
             memory[IC - 100] = encoded_operand;
             IC++;
             break;
         case ADDR_DIRECT:
-            /* For direct addressing, leave a placeholder for the address
-             * This will be filled in during the second pass */
+            /* Placeholder for address, to be filled in second pass */
             IC++;
             break;
         case ADDR_INDEX:
         case ADDR_REGISTER:
-            /* For index and register addressing, encode the register number */
             encoded_operand = (MachineWord)((operand[method == ADDR_INDEX ? 2 : 1] - '0') & 0x7);
             if (method == ADDR_INDEX) {
                 encoded_operand <<= 3;  /* Shift for index addressing */
