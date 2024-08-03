@@ -3,7 +3,7 @@
 #ifndef SYMBOL_TABLE_H
 #define SYMBOL_TABLE_H
 
-#define MAX_SYMBOL_LENGTH 31
+#define MAX_SYMBOL_LENGTH 80
 
 typedef struct {
     char name[MAX_SYMBOL_LENGTH];

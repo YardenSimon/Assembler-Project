@@ -98,10 +98,3 @@ static void handle_directive(char* line) {
         /* Increment DC for each character plus null terminator */
     }
 }
-
-void free_memory() {
-    free(memory);
-    memory = NULL;
-    memory_size = 0;
-    free_symbol_table();
-}
