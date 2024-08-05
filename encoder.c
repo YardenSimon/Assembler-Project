@@ -48,28 +48,23 @@ void encode_instruction(const char* instruction) {
     AddressingMethod src_method, dst_method;
     MachineWord encoded_word = 0;
 
-    /* Parse instruction into opcode and operands */
     sscanf(instruction, "%s %[^,], %s", opcode_name, source, destination);
 
     opcode_value = get_opcode_value(opcode_name);
     src_method = get_addressing_method(source);
     dst_method = get_addressing_method(destination);
 
-    /* Encode first word of instruction */
     encoded_word |= (opcode_value & 0xF) << 11;
     encoded_word |= (src_method & 0xF) << 7;
     encoded_word |= (dst_method & 0xF) << 3;
-    /* ARE bits set to 0 for now, will be updated in second pass if needed */
 
-    if (IC - 100 + DC >= memory_size) {
-        memory_size *= 2;
-        MachineWord* temp = (MachineWord*)realloc(memory, memory_size * sizeof(MachineWord));
-        if (temp == NULL) {
-            fprintf(stderr, "Error: Memory reallocation failed\n");
-            exit(1);
-        }
-        memory = temp;
+    /* Set ARE bits based on addressing methods */
+    if (src_method == ADDR_IMMEDIATE || dst_method == ADDR_IMMEDIATE) {
+        encoded_word |= 0x0004; /* Set A bit */
+    } else if (src_method == ADDR_DIRECT || dst_method == ADDR_DIRECT) {
+        encoded_word |= 0x0002; /* Set R bit */
     }
+    /* E bit (0x0001) would be set in the second pass for external symbols */
 
     memory[IC - 100] = encoded_word;
     IC++;
@@ -77,6 +72,7 @@ void encode_instruction(const char* instruction) {
     /* Encode operands, which may require additional words */
     encode_operand(src_method, source);
     encode_operand(dst_method, destination);
+
 }
 
 /* Get the numeric value of an opcode */
