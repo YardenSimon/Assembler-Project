@@ -1,21 +1,12 @@
 #ifndef OPERAND_VALIDATION_H
 #define OPERAND_VALIDATION_H
+#define MAX_LABEL_LENGTH 31
 
-#include <stddef.h>
-
-/* Find and validate a command in a line */
 int find_command(const char* line);
-
-/* Check if a string is a valid label */
 int is_label(const char* str);
-
-/* Validate an operand */
-int validate_operand(const char* operand, int command_group);
-
-/* Count operands in a line */
+int validate_operand(const char* op, int command_group);
 int count_operands(const char* line);
-
-/* Extract operands from a line */
 void extract_operands(const char* line, char* first_operand, char* second_operand);
+int extract_operands(const char* line, char* first_operand, char* second_operand, int command_group);
 
-#endif /* OPERAND_VALIDATION_H */
+#endif
