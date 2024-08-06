@@ -24,27 +24,22 @@ int main(int argc, char *argv[]) {
 }
 
 static void process_file(const char *filename) {
+    char am_filename[MAX_FILENAME_LENGTH];
+
     printf("Processing file: %s\n", filename);
 
     init_macros();
 
-    replace_macros(filename);
+    replace_macros(filename);  /* This creates the .am file */
 
-    if (!perform_first_pass(filename)) {
-        fprintf(stderr, "First pass failed for file: %s\n", filename);
-        free_macros();
-        free_memory();
-        return;
-    }
+    /* Get the name of the .am file created by replace_macros */
+    sprintf(am_filename, "%s.am", filename);
 
-    if (!perform_second_pass(filename)) {
-        fprintf(stderr, "Second pass failed for file: %s\n", filename);
-        free_macros();
-        free_memory();
-        return;
-    }
+    perform_first_pass(am_filename);  /* Use .am file for first pass */
 
-    printf("Assembly completed successfully for file: %s\n", filename);
+    perform_second_pass(am_filename);  /* Use .am file for second pass as well */
+
+    printf("Assembly completed for file: %s\n", filename);
 
     free_macros();
     free_memory();

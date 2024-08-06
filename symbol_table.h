@@ -1,5 +1,5 @@
 /* symbol_table.h */
-
+#include <stdbool.h>
 #ifndef SYMBOL_TABLE_H
 #define SYMBOL_TABLE_H
 
@@ -13,6 +13,10 @@ typedef struct {
 } Symbol;
 
 Symbol* get_symbol_by_address(int address);
+bool has_external_symbols(void);
+bool has_entry_symbols(void);
+Symbol* get_first_symbol(void);
+Symbol* get_next_symbol(void);
 void init_symbol_table();
 void add_symbol(const char* name, int address);
 int lookup_symbol(const char* name);

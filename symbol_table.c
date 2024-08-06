@@ -62,6 +62,39 @@ Symbol* get_symbol_by_address(int address) {
     return NULL;  /* Symbol not found */
 }
 
+bool has_external_symbols(void) {
+    int i;
+    for (i = 0; i < symbol_count; i++) {
+        if (symbol_table[i].is_external) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool has_entry_symbols(void) {
+    int i;
+    for (i = 0; i < symbol_count; i++) {
+        if (symbol_table[i].is_entry) {
+            return true;
+        }
+    }
+    return false;
+}
+
+Symbol* get_first_symbol(void) {
+    current_symbol_index = 0;
+    return (symbol_count > 0) ? &symbol_table[0] : NULL;
+}
+
+Symbol* get_next_symbol(void) {
+    current_symbol_index++;
+    if (current_symbol_index < symbol_count) {
+        return &symbol_table[current_symbol_index];
+    }
+    return NULL;
+}
+
 void mark_external(const char* name) {
     /* Mark a symbol as external */
     int i;
