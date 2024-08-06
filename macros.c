@@ -1,6 +1,7 @@
 /* macros.c */
 
 #include "macros.h"
+#include "opcode_groups.h"
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>

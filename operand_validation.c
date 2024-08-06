@@ -4,10 +4,6 @@
 #include <string.h>
 #include <stdlib.h>
 
-/* ############################Add a separate function to handle .data and .string directives,
- * as they work differently from regular instructions.########################################*/
-
-
 /* find_command purpose is identify the opcode it gets and -
    1. skip whitespace
    2. skip labels (if the line starts with a label)
@@ -79,9 +75,9 @@ int is_label(const char* str) {
 }
 
 /* This function checks if a given string is a valid label when used as an operand in an instruction.
- * 1. It checks if the first char is a letter.
- * 2. It checks if each character of the label if it's alphanumeric
- * 3. Counts the length of the label and then checks if it's length is less or equal to 31.
+ 1. It checks if the first char is a letter.
+ 2. It checks if each character of the label if it's alphanumeric
+ 3. Counts the length of the label and then checks if it's length is less or equal to 31.
  */
 int is_valid_label_operand(const char* str) {
     int i = 0;

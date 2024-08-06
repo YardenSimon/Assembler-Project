@@ -13,5 +13,6 @@ typedef unsigned short MachineWord;
 
 /* Encode a single instruction into machine code */
 void encode_instruction(const char* instruction);
+AddressingMethod get_addressing_method(const char* operand)
 
 #endif /* ENCODER_H */
