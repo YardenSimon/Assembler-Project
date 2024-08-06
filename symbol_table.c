@@ -52,6 +52,16 @@ int lookup_symbol(const char* name) {
     return -1; /* Symbol not found */
 }
 
+Symbol* get_symbol_by_address(int address) {
+    int i;
+    for (i = 0; i < symbol_count; i++) {
+        if (symbol_table[i].address == address) {
+            return &symbol_table[i];
+        }
+    }
+    return NULL;  /* Symbol not found */
+}
+
 void mark_external(const char* name) {
     /* Mark a symbol as external */
     int i;

@@ -25,6 +25,7 @@ static unsigned short create_address_word(int address, int are);
 static char* convert_to_octal(unsigned short num);
 static char* get_filename_without_extension(const char* filename);
 
+
 /* Main function for the second pass of the assembler
     It updates all symbol addresses in the assembled code and generates output files.
     */

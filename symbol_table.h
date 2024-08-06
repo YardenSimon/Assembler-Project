@@ -12,6 +12,7 @@ typedef struct {
     int is_entry;
 } Symbol;
 
+Symbol* get_symbol_by_address(int address);
 void init_symbol_table();
 void add_symbol(const char* name, int address);
 int lookup_symbol(const char* name);
