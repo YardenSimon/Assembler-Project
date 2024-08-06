@@ -97,7 +97,7 @@ static void write_object_file(const char* filename) {
     FILE* ob_file;
     int i;
 
-    snprintf(ob_filename, sizeof(ob_filename), "%s.ob", filename);
+    sprintf(ob_filename, "%s.ob", filename);
     ob_file = fopen(ob_filename, "w");
     if (ob_file == NULL) {
         fprintf(stderr, "Error: Unable to create object file.\n");
@@ -123,7 +123,7 @@ static void write_externals_file(const char* filename) {
     int i;
     Symbol* symbol;
 
-    snprintf(ext_filename, sizeof(ext_filename), "%s.ext", filename);
+    sprintf(ext_filename, "%s.ext", filename);
     ext_file = fopen(ext_filename, "w");
     if (ext_file == NULL) {
         fprintf(stderr, "Error: Unable to create externals file.\n");
@@ -152,7 +152,7 @@ static void write_entries_file(const char* filename) {
     FILE* ent_file;
     Symbol* symbol;
 
-    snprintf(ent_filename, sizeof(ent_filename), "%s.ent", filename);
+    sprintf(ent_filename, "%s.ent", filename);
     ent_file = fopen(ent_filename, "w");
     if (ent_file == NULL) {
         fprintf(stderr, "Error: Unable to create entries file.\n");
@@ -184,7 +184,7 @@ static unsigned short create_address_word(int address, int are) {
 static char* convert_to_octal(unsigned short num) {
 
     static char octal_str[7]; /* 5 octal digits + possible negative sign + null terminator */
-    snprintf(octal_str, sizeof(octal_str), "%05o", num);
+    sprintf(octal_str, "%05o", num);
     return octal_str;
 }
 

@@ -24,7 +24,7 @@ void add_symbol(const char* name, int address) {
     if (symbol_count >= symbol_capacity) {
         /* Double the capacity if we've reached the limit */
         symbol_capacity *= 2;
-        Symbol* temp = (Symbol*)realloc(symbol_table, symbol_capacity * sizeof(Symbol));
+        Symbol *temp = (Symbol *) realloc(symbol_table, symbol_capacity * sizeof(Symbol));
         if (temp == NULL) {
             fprintf(stderr, "Error: Memory reallocation failed for symbol table\n");
             exit(1);
