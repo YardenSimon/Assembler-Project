@@ -6,7 +6,6 @@
 #include "first_pass.h"
 #include "second_pass.h"
 
-/* Function prototype */
 static void process_file(const char *filename);
 
 int main(int argc, char *argv[]) {
@@ -27,30 +26,26 @@ int main(int argc, char *argv[]) {
 static void process_file(const char *filename) {
     printf("Processing file: %s\n", filename);
 
-    /* Initialize macro storage */
     init_macros();
 
-    /* Macro processing stage */
     replace_macros(filename);
 
-    /* First pass */
     if (!perform_first_pass(filename)) {
         fprintf(stderr, "First pass failed for file: %s\n", filename);
         free_macros();
+        free_memory();
         return;
     }
 
-    /* Second pass */
     if (!perform_second_pass(filename)) {
         fprintf(stderr, "Second pass failed for file: %s\n", filename);
         free_macros();
-        cleanup_assembler();  /* This cleans up both first and second pass allocations */
+        free_memory();
         return;
     }
 
     printf("Assembly completed successfully for file: %s\n", filename);
 
-    /* Clean up */
     free_macros();
-    cleanup_assembler();  /* This cleans up both first and second pass allocations */
+    free_memory();
 }
