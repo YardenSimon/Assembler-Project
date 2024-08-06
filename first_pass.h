@@ -5,9 +5,8 @@
 
 #define MAX_LINE_LENGTH 80
 
-/* Do the first pass of the assembler
- * This function reads the input file, handles each line,
- * makes the symbol table, and partly codes instructions */
+/* Perform the first pass of the assembler */
 void perform_first_pass(const char* filename);
+void free_memory(void);
 
 #endif /* FIRST_PASS_H */

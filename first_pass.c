@@ -23,12 +23,11 @@ static void handle_directive(char* line);
 static int add_to_memory(MachineWord* word);
 static void free_memory_content(void);
 
-/* The function -
- * 1. Opens the input file
- * 2. Initializes memory with INITIAL_MEMORY_SIZE
- * 3. Initializes the symbol table
- * 4. Reads the file line by line, skipping comments and empty lines
- * 5. Calls process_line for each valid line
+/* This function initiates the first pass of the assembler. It:
+  1. Opens the input file containing assembly code
+  2. Initializes the memory array to store the program
+  3. Processes the file line by line, calling process_line for each
+  4. Handles any file-related errors
  */
 void perform_first_pass(const char* filename) {
     FILE* file;
@@ -62,9 +61,12 @@ void perform_first_pass(const char* filename) {
     fclose(file);
 }
 
-/* 1. Check if the line starts with a label and handles it if resent.
- * 2. Identifies the type of line (directive or instruction) and calls the appropriate handler.
- * 3. Handles .extern directives by adding the symbol to the symbol table with address 0.
+/*
+ This function analyzes each line of the input:
+ 1. Identifies and processes labels using handle_label
+ 2. Determines the line type (directive or instruction)
+ 3. Calls appropriate handlers (handle_directive or handle_instruction)
+ 4. Manages .extern directives by adding them to the symbol table
  */
 static void process_line(char* line) {
     if (is_label(line)) {
@@ -89,9 +91,11 @@ static void process_line(char* line) {
     }
 }
 
-/* Extracts the label from the line.
-   Checks if the label length is valid.
-   Adds the label to the symbol table with the current IC value.
+/*
+  When a label is encountered, this function:
+  1. Extracts the label from the line
+  2. Validates the label length
+  3. Adds the label to the symbol table with its current address (IC)
  */
 static void handle_label(char* line) {
     char label[MAX_LABEL_LENGTH + 1];
@@ -110,8 +114,10 @@ static void handle_label(char* line) {
     while (isspace((unsigned char)*line)) line++;
 }
 
-/* Uses find_command to identify the instruction.
-   If valid, calls encode_instruction to encode and store the instruction.
+/* This function processes assembly instructions:
+   1. Validates the instruction using find_command
+   2. If valid, calls encode_instruction to convert it to machine code
+   3. Manages any instruction-related errors
  */
 static void handle_instruction(char* line) {
     int command_index = find_command(line);
@@ -126,16 +132,11 @@ static void handle_instruction(char* line) {
 }
 
 
-/*For .data:
-    Parses each number in the line.
-    Allocates memory for each number.
-    Stores the number in memory.
-    Increments DC for each number.
-For .string:
-    Ensures the string starts with a quote.
-    Allocates memory for each character and stores its ASCII value.
-    Adds a null terminator at the end.
-    Increments DC for each character and the null terminator.
+/* This function processes assembler directives (.data and .string):
+   1. For .data: Parses numbers, allocates memory for each, and stores them
+   2. For .string: Allocates memory for each character and its ASCII value
+   3. Adds a null terminator for strings
+   4. Updates the Data Counter (DC) accordingly
  */
 static void handle_directive(char* line) {
     char* token;
@@ -197,9 +198,11 @@ static void handle_directive(char* line) {
         DC++;
     }
 }
-/* The function Calculates the current address based on IC and DC.
-   If needed, reallocates memory to accommodate more words.
-   Adds the word to memory at the calculated address.
+/* This function manages memory allocation:
+   1. Calculates the current memory address
+   2. Expands memory if necessary using realloc
+   3. Adds the new word to the memory array
+   4. Handles memory allocation failures
  */
 static int add_to_memory(MachineWord* word) {
     int current_address = IC + DC - 100;
