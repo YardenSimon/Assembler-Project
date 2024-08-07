@@ -13,13 +13,8 @@ extern int DC;
 extern MachineWord* memory;
 extern int memory_size;
 
-/* Enum to represent different addressing methods for operands */
-typedef enum {
-    ADDR_IMMEDIATE,  /* Immediate value, e.g., #5 */
-    ADDR_DIRECT,     /* Direct address or label */
-    ADDR_INDEX,      /* Index addressing, e.g., *r3 */
-    ADDR_REGISTER    /* Register addressing, e.g., r7 */
-} AddressingMethod;
+
+
 
 /* Structure to hold information about each opcode */
 typedef struct {

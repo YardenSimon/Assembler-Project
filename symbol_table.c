@@ -8,23 +8,30 @@
 Symbol* symbol_table = NULL;
 int symbol_count = 0;
 int symbol_capacity = 0;
+int current_symbol_index = 0;
 
-void init_symbol_table() {
-    /* Initialize the symbol table with an initial capacity */
-    symbol_capacity = 10;  /* Start with space for 10 symbols */
+/* Initialize the symbol table with an initial capacity */
+void init_symbol_table(void) {
+    int initial_capacity = 10;  /* Start with space for 10 symbols */
+
+    symbol_capacity = initial_capacity;
     symbol_table = (Symbol*)calloc(symbol_capacity, sizeof(Symbol));
     if (symbol_table == NULL) {
         fprintf(stderr, "Error: Memory allocation failed for symbol table\n");
         exit(1);
     }
+    symbol_count = 0;
+    current_symbol_index = 0;
 }
 
+/* Add a new symbol to the symbol table */
 void add_symbol(const char* name, int address) {
-    /* Add a new symbol to the symbol table */
+    Symbol *temp;
+
     if (symbol_count >= symbol_capacity) {
         /* Double the capacity if we've reached the limit */
         symbol_capacity *= 2;
-        Symbol *temp = (Symbol *) realloc(symbol_table, symbol_capacity * sizeof(Symbol));
+        temp = (Symbol*)realloc(symbol_table, symbol_capacity * sizeof(Symbol));
         if (temp == NULL) {
             fprintf(stderr, "Error: Memory reallocation failed for symbol table\n");
             exit(1);
@@ -41,9 +48,10 @@ void add_symbol(const char* name, int address) {
     symbol_count++;
 }
 
+/* Look up a symbol by name and return its address */
 int lookup_symbol(const char* name) {
-    /* Look up a symbol by name and return its address */
     int i;
+
     for (i = 0; i < symbol_count; i++) {
         if (strcmp(symbol_table[i].name, name) == 0) {
             return symbol_table[i].address;
@@ -52,8 +60,10 @@ int lookup_symbol(const char* name) {
     return -1; /* Symbol not found */
 }
 
+/* Get a symbol by its address */
 Symbol* get_symbol_by_address(int address) {
     int i;
+
     for (i = 0; i < symbol_count; i++) {
         if (symbol_table[i].address == address) {
             return &symbol_table[i];
@@ -62,8 +72,10 @@ Symbol* get_symbol_by_address(int address) {
     return NULL;  /* Symbol not found */
 }
 
+/* Check if there are any external symbols */
 bool has_external_symbols(void) {
     int i;
+
     for (i = 0; i < symbol_count; i++) {
         if (symbol_table[i].is_external) {
             return true;
@@ -72,8 +84,10 @@ bool has_external_symbols(void) {
     return false;
 }
 
+/* Check if there are any entry symbols */
 bool has_entry_symbols(void) {
     int i;
+
     for (i = 0; i < symbol_count; i++) {
         if (symbol_table[i].is_entry) {
             return true;
@@ -82,11 +96,13 @@ bool has_entry_symbols(void) {
     return false;
 }
 
+/* Get the first symbol in the table */
 Symbol* get_first_symbol(void) {
     current_symbol_index = 0;
     return (symbol_count > 0) ? &symbol_table[0] : NULL;
 }
 
+/* Get the next symbol in the table */
 Symbol* get_next_symbol(void) {
     current_symbol_index++;
     if (current_symbol_index < symbol_count) {
@@ -95,9 +111,10 @@ Symbol* get_next_symbol(void) {
     return NULL;
 }
 
+/* Mark a symbol as external */
 void mark_external(const char* name) {
-    /* Mark a symbol as external */
     int i;
+
     for (i = 0; i < symbol_count; i++) {
         if (strcmp(symbol_table[i].name, name) == 0) {
             symbol_table[i].is_external = 1;
@@ -109,9 +126,10 @@ void mark_external(const char* name) {
     symbol_table[symbol_count - 1].is_external = 1;
 }
 
+/* Mark a symbol as an entry point */
 void mark_entry(const char* name) {
-    /* Mark a symbol as an entry point */
     int i;
+
     for (i = 0; i < symbol_count; i++) {
         if (strcmp(symbol_table[i].name, name) == 0) {
             symbol_table[i].is_entry = 1;
@@ -121,32 +139,11 @@ void mark_entry(const char* name) {
     fprintf(stderr, "Error: Trying to mark non-existent symbol '%s' as entry\n", name);
 }
 
-int has_external_symbols(void) {
-    /* Check if there are any external symbols in the symbol table */
-    int i;
-    for (i = 0; i < symbol_count; i++) {
-        if (symbol_table[i].is_external) {
-            return 1; /* Found at least one external symbol */
-        }
-    }
-    return 0; /* No external symbols found */
-}
-
-int has_entry_symbols(void) {
-    /* Check if there are any entry symbols in the symbol table */
-    int i;
-    for (i = 0; i < symbol_count; i++) {
-        if (symbol_table[i].is_entry) {
-            return 1; /* Found at least one entry symbol */
-        }
-    }
-    return 0; /* No entry symbols found */
-}
-
-void free_symbol_table() {
-    /* Free the memory allocated for the symbol table */
+/* Free the memory allocated for the symbol table */
+void free_symbol_table(void) {
     free(symbol_table);
     symbol_table = NULL;
     symbol_count = 0;
     symbol_capacity = 0;
+    current_symbol_index = 0;
 }
