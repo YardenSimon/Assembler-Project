@@ -13,15 +13,14 @@
 
 int IC = 100; /* Instruction Counter */
 int DC = 0;   /* Data Counter */
-MachineWord** memory = NULL;
+MachineWord* memory = NULL;
 int memory_size = 0;
 
 static void process_line(char* line);
 static void handle_label(char* line);
 static void handle_instruction(char* line);
 static void handle_directive(char* line);
-static int add_to_memory(MachineWord* word);
-static void free_memory_content(void);
+static int add_to_memory(MachineWord word);
 
 /* This function initiates the first pass of the assembler. It:
   1. Opens the input file containing assembly code
@@ -43,7 +42,7 @@ void perform_first_pass(const char* filename) {
     DC = 0;
 
     memory_size = INITIAL_MEMORY_SIZE;
-    memory = (MachineWord**)calloc(memory_size, sizeof(MachineWord*));
+    memory = (MachineWord*)calloc(memory_size, sizeof(MachineWord));
     if (memory == NULL) {
         fprintf(stderr, "Error: Memory allocation failed\n");
         fclose(file);
@@ -69,6 +68,10 @@ void perform_first_pass(const char* filename) {
  4. Manages .extern directives by adding them to the symbol table
  */
 static void process_line(char* line) {
+
+    /* Skip leading whitespace */
+    while (isspace((unsigned char)*line)) line++;
+
     if (is_label(line)) {
         handle_label(line);
         /* Move past the label for further processing */
@@ -86,7 +89,11 @@ static void process_line(char* line) {
     } else if (strncmp(line, ".entry", 6) == 0) {
         /* For .entry, mark the symbol as entry (in second pass) */
         /* This will be handled in the second pass */
-    } else {
+    } else if (line[0] == '.') {
+        /* Handle unknown directives */
+        fprintf(stderr, "Error: Unknown directive: %s\n", line);
+    } else if (line[0] != '\0') {
+        /* Only process non-empty lines as instructions */
         handle_instruction(line);
     }
 }
@@ -131,7 +138,6 @@ static void handle_instruction(char* line) {
     /* IC is incremented in encode_instruction */
 }
 
-
 /* This function processes assembler directives (.data and .string):
    1. For .data: Parses numbers, allocates memory for each, and stores them
    2. For .string: Allocates memory for each character and its ASCII value
@@ -139,9 +145,8 @@ static void handle_instruction(char* line) {
    4. Updates the Data Counter (DC) accordingly
  */
 static void handle_directive(char* line) {
-    char* token;
     int value;
-    MachineWord* word;
+    char* endptr;
 
     if (strncmp(line, ".data", 5) == 0) {
         line += 5;
@@ -149,15 +154,14 @@ static void handle_directive(char* line) {
             while (isspace((unsigned char)*line) || *line == ',') line++;
             if (*line == '\0') break;
 
-            value = (int)strtol(line, &line, 10);
-            word = (MachineWord*)malloc(sizeof(MachineWord));
-            if (word == NULL) {
-                fprintf(stderr, "Error: Memory allocation failed\n");
+            value = (int)strtol(line, &endptr, 10);
+            if (line == endptr) {
+                fprintf(stderr, "Error: Invalid number in .data directive\n");
                 return;
             }
-            *word = (MachineWord)value;
-            if (add_to_memory(word) == -1) {
-                free(word);
+            line = endptr;
+
+            if (add_to_memory((MachineWord)value) == -1) {
                 return;
             }
             DC++;
@@ -171,45 +175,32 @@ static void handle_directive(char* line) {
         }
         line++;
         while (*line && *line != '"') {
-            word = (MachineWord*)malloc(sizeof(MachineWord));
-            if (word == NULL) {
-                fprintf(stderr, "Error: Memory allocation failed\n");
-                return;
-            }
-            *word = (MachineWord)(unsigned char)*line;
-            if (add_to_memory(word) == -1) {
-                free(word);
+            if (add_to_memory((MachineWord)(unsigned char)*line) == -1) {
                 return;
             }
             DC++;
             line++;
         }
         /* Add null terminator */
-        word = (MachineWord*)malloc(sizeof(MachineWord));
-        if (word == NULL) {
-            fprintf(stderr, "Error: Memory allocation failed\n");
-            return;
-        }
-        *word = 0;
-        if (add_to_memory(word) == -1) {
-            free(word);
+        if (add_to_memory(0) == -1) {
             return;
         }
         DC++;
     }
 }
+
 /* This function manages memory allocation:
    1. Calculates the current memory address
    2. Expands memory if necessary using realloc
    3. Adds the new word to the memory array
    4. Handles memory allocation failures
  */
-static int add_to_memory(MachineWord* word) {
+static int add_to_memory(MachineWord word) {
     int current_address = IC + DC - 100;
     if (current_address >= memory_size) {
-        MachineWord** new_memory;
+        MachineWord* new_memory;
         memory_size *= 2;
-        new_memory = (MachineWord**)realloc(memory, memory_size * sizeof(MachineWord*));
+        new_memory = (MachineWord*)realloc(memory, memory_size * sizeof(MachineWord));
         if (new_memory == NULL) {
             fprintf(stderr, "Error: Memory reallocation failed\n");
             return -1;
@@ -221,18 +212,8 @@ static int add_to_memory(MachineWord* word) {
 }
 
 void free_memory(void) {
-    free_memory_content();
     free(memory);
     memory = NULL;
     memory_size = 0;
     free_symbol_table();
-}
-
-static void free_memory_content(void) {
-    int i;
-    for (i = 0; i < IC + DC - 100; i++) {
-        if (memory[i] != NULL) {
-            free(memory[i]);
-        }
-    }
 }

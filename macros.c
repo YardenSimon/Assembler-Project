@@ -1,4 +1,3 @@
-
 #include "macros.h"
 #include "opcode_groups.h"
 #include <string.h>
@@ -10,11 +9,9 @@
 #define MAX_FILENAME_LENGTH 256
 #define INITIAL_MACRO_CAPACITY 10
 
-
 Macro* macros = NULL;
 int macro_count = 0;
 int macro_capacity = 0;
-
 
 const char *group1[] = {"mov", "cmp", "add", "sub", "lea"};
 const int group1_count = sizeof(group1) / sizeof(group1[0]);
@@ -27,7 +24,6 @@ const int group3_count = sizeof(group3) / sizeof(group3[0]);
 
 const char *instruction_words[] = {".data", ".string", ".entry", ".extern"};
 const int instruction_words_count = sizeof(instruction_words) / sizeof(instruction_words[0]);
-
 
 static int word_in_list(const char *word, const char *list[], int list_count);
 static char* read_line(FILE *file);
@@ -137,7 +133,10 @@ static Macro* find_macro(const char *name) {
  Returns 1 if the macro start is valid, 0 otherwise
  */
 static int handle_macro_start(char *line, char *macro_name, int line_number) {
-    if (sscanf(line, "%*s %s", macro_name) != 1 || !can_be_macro_name(macro_name)) {
+    int scan_result;
+
+    scan_result = sscanf(line, "%*s %s", macro_name);
+    if (scan_result != 1 || !can_be_macro_name(macro_name)) {
         fprintf(stderr, "Error: Invalid macro name at line %d\n", line_number);
         return 0;
     }
@@ -216,7 +215,10 @@ static void process_macros(const char *input_name, const char *output_name) {
     while ((line = read_line(input_file)) != NULL) {
         line_number++;
 
-        if (strncmp(line, "macro", 5) == 0) {
+        char first_word[MAX_MACRO_NAME];
+        sscanf(line, "%s", first_word);
+
+        if (strcmp(first_word, "macr") == 0) {
             if (in_macro_definition) {
                 fprintf(stderr, "Error: Nested macro definition at line %d\n", line_number);
             } else if (handle_macro_start(line, macro_name, line_number)) {
@@ -231,9 +233,9 @@ static void process_macros(const char *input_name, const char *output_name) {
                 }
                 macro_content[0] = '\0';
             }
-        } else if (strcmp(line, "endmacro") == 0) {
+        } else if (strcmp(first_word, "endmacr") == 0) {
             if (!in_macro_definition) {
-                fprintf(stderr, "Error: Unexpected 'endmacro' at line %d\n", line_number);
+                fprintf(stderr, "Error: Unexpected 'endmacr' at line %d\n", line_number);
             } else {
                 handle_macro_end(macro_name, &macro_content);
                 in_macro_definition = 0;
@@ -259,7 +261,21 @@ static void process_macros(const char *input_name, const char *output_name) {
  It creates the .am file name and calls process_macros to do the actual work */
 void replace_macros(const char *input_name) {
     char output_name[MAX_FILENAME_LENGTH];
-    sprintf(output_name, "%s.am", input_name);
+    char *base_name;
+    size_t base_name_length;
+
+    base_name = strrchr(input_name, '/');
+    if (base_name == NULL) {
+        base_name = (char *)input_name;
+    } else {
+        base_name++;
+    }
+    base_name_length = strlen(base_name) - 3;
+
+    strncpy(output_name, base_name, base_name_length);
+    output_name[base_name_length] = '\0';
+    strcat(output_name, ".am");
+
     process_macros(input_name, output_name);
 }
 
