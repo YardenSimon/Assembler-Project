@@ -8,8 +8,7 @@
 #include "first_pass.h"
 #include "second_pass.h"
 #include "symbol_table.h"
-
-#define MAX_FILENAME_LENGTH 256
+#include "globals.h"
 
 /* Function to process a single input file */
 static void process_file(const char *filename) {
@@ -30,18 +29,18 @@ static void process_file(const char *filename) {
     am_filename[base_filename.length] = '\0';
     strcat(am_filename, ".am");
 
-    /* Perform first pass on .am file */
-    perform_first_pass(am_filename);
-
-    print_symbol_table();
-
-    /* Perform second pass on .am file */
-    perform_second_pass(am_filename);
-
-    printf("Assembly completed for file: %s\n", filename);
-
-    /* Free allocated resources */
-    free(base_filename.name);
+    // /* Perform first pass on .am file */
+    // perform_first_pass(am_filename);
+    //
+    // print_symbol_table();
+    //
+    // /* Perform second pass on .am file */
+    // perform_second_pass(am_filename);
+    //
+    // printf("Assembly completed for file: %s\n", filename);
+    //
+    // /* Free allocated resources */
+    // free(base_filename.name);
     free_macros();
 }
 

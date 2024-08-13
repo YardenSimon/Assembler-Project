@@ -1,14 +1,13 @@
 /* second_pass.c */
 
+#include "globals.h"
 #include "utils.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include "second_pass.h"
 #include "symbol_table.h"
 #include "encoder.h"
-
-#define MAX_FILENAME_LENGTH 256
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 extern int IC;
 extern int DC;
@@ -31,27 +30,28 @@ void perform_second_pass(const char* filename) {
     printf("DEBUG: Second pass completed successfully\n");
 }
 
-static void update_symbol_addresses(void) {
+static void update_symbol_addresses(void)
+{
     int i;
     Symbol* symbol;
     char symbol_name[MAX_SYMBOL_LENGTH + 1];
 
     printf("DEBUG: Updating symbol addresses\n");
-    for (i = 0; i < IC + DC - 100; i++) {
-        if ((memory[i] & 0x0007) == ARE_RELOCATABLE) {
+    for (i = 0; i < IC + DC - INITIAL_MEMORY_ADDRESS; i++) {
+        if ((memory[i] & ((1 << ARE_BITS) - 1)) == ARE_RELOCATABLE) {
             strncpy(symbol_name, (char*)&memory[i], sizeof(MachineWord));
             symbol_name[sizeof(MachineWord)] = '\0';
             symbol = get_symbol_by_name(symbol_name);
             if (symbol != NULL) {
                 if (symbol->is_external) {
-                    memory[i] = (symbol->address << 3) | ARE_EXTERNAL;
-                    printf("DEBUG: Updated external symbol %s at address %d\n", symbol_name, i + 100);
+                    memory[i] = (symbol->address << ARE_BITS) | ARE_EXTERNAL;
+                    printf("DEBUG: Updated external symbol %s at address %d\n", symbol_name, i + INITIAL_MEMORY_ADDRESS);
                 } else {
-                    memory[i] = (symbol->address << 3) | ARE_RELOCATABLE;
-                    printf("DEBUG: Updated relocatable symbol %s at address %d\n", symbol_name, i + 100);
+                    memory[i] = (symbol->address << ARE_BITS) | ARE_RELOCATABLE;
+                    printf("DEBUG: Updated relocatable symbol %s at address %d\n", symbol_name, i + INITIAL_MEMORY_ADDRESS);
                 }
             } else {
-                fprintf(stderr, "Error: Undefined symbol %s at address %d\n", symbol_name, i + 100);
+                fprintf(stderr, "Error: Undefined symbol %s at address %d\n", symbol_name, i + INITIAL_MEMORY_ADDRESS);
             }
         }
     }
@@ -65,25 +65,27 @@ static void create_output_files(const char* filename) {
     free(base_filename);
 }
 
-static void write_object_file(const char* filename) {
+static void write_object_file(const char* filename)
+{
     char ob_filename[MAX_FILENAME_LENGTH];
     FILE* ob_file;
     int i;
 
-    sprintf(ob_filename, "%s.ob", filename);
+    sprintf(ob_filename, "%s%s", filename, OBJECT_FILE_EXT);
     ob_file = safe_fopen(ob_filename, "w");
 
-    fprintf(ob_file, "%d %d\n", IC - 100, DC);
+    fprintf(ob_file, "%d %d\n", IC - INITIAL_MEMORY_ADDRESS, DC);
 
-    for (i = 0; i < IC + DC - 100; i++) {
-        fprintf(ob_file, "%04d %s\n", i + 100, convert_to_octal(memory[i]));
+    for (i = 0; i < IC + DC - INITIAL_MEMORY_ADDRESS; i++) {
+        fprintf(ob_file, "%04d %s\n", i + INITIAL_MEMORY_ADDRESS, convert_to_octal(memory[i]));
     }
 
     fclose(ob_file);
     printf("DEBUG: Object file '%s' created successfully\n", ob_filename);
 }
 
-static void write_externals_file(const char* filename) {
+static void write_externals_file(const char* filename)
+{
     char ext_filename[MAX_FILENAME_LENGTH];
     FILE* ext_file = NULL;
     int i;
@@ -100,7 +102,7 @@ static void write_externals_file(const char* filename) {
 
     /* Only create the file if there are external symbols */
     if (external_count > 0) {
-        sprintf(ext_filename, "%s.ext", filename);
+        sprintf(ext_filename, "%s%s", filename, EXTERNALS_FILE_EXT);
         ext_file = safe_fopen(ext_filename, "w");
 
         for (i = 0; i < get_symbol_count(); i++) {
@@ -118,7 +120,8 @@ static void write_externals_file(const char* filename) {
     }
 }
 
-static void write_entries_file(const char* filename) {
+static void write_entries_file(const char* filename)
+{
     char ent_filename[MAX_FILENAME_LENGTH];
     FILE* ent_file = NULL;
     int i;
@@ -135,7 +138,7 @@ static void write_entries_file(const char* filename) {
 
     /* Only create the file if there are entry symbols */
     if (entry_count > 0) {
-        sprintf(ent_filename, "%s.ent", filename);
+        sprintf(ent_filename, "%s%s", filename, ENTRIES_FILE_EXT);
         ent_file = safe_fopen(ent_filename, "w");
 
         for (i = 0; i < get_symbol_count(); i++) {
@@ -153,14 +156,16 @@ static void write_entries_file(const char* filename) {
     }
 }
 
-static char* convert_to_octal(unsigned short num) {
+
+static char* convert_to_octal(unsigned short num)
+{
     static char octal_str[7];
     int i;
-    unsigned short mask = 0x7000;
+    unsigned short temp = num;
 
-    for (i = 0; i < 5; i++) {
-        octal_str[i] = ((num & mask) >> (12 - 3*i)) + '0';
-        mask >>= 3;
+    for (i = 4; i >= 0; i--) {
+        octal_str[i] = (temp & 7) + '0';
+        temp >>= 3;
     }
     octal_str[5] = '\0';
 

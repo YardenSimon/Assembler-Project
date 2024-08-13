@@ -1,6 +1,7 @@
 /* utils.c */
 
 #include "utils.h"
+#include "globals.h"
 #include <ctype.h>
 #include <string.h>
 

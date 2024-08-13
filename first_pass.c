@@ -5,14 +5,13 @@
 #include "encoder.h"
 #include "symbol_table.h"
 #include "operand_validation.h"
+#include "globals.h"
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
 
-#define INITIAL_MEMORY_SIZE 1000
-
-int IC = 100; /* Instruction Counter */
+int IC = INITIAL_MEMORY_ADDRESS; /* Instruction Counter */
 int DC = 0;   /* Data Counter */
 MachineWord* memory = NULL;
 int memory_size = 0;
@@ -38,7 +37,7 @@ void perform_first_pass(const char* filename) {
     IC = 100;
     DC = 0;
 
-    memory_size = INITIAL_MEMORY_SIZE;
+    memory_size = MEMORY_SIZE;
     memory = (MachineWord*)safe_malloc(memory_size * sizeof(MachineWord*));
     memset(memory, 0, memory_size * sizeof(MachineWord*));
 
@@ -72,30 +71,24 @@ static void process_line(char* line) {
         skip_whitespace(&line);
     }
 
-    if (strncmp(line, ".data", 5) == 0 || strncmp(line, ".string", 7) == 0) {
+    if (strncmp(line, DIRECTIVE_NAMES[0], strlen(DIRECTIVE_NAMES[0])) == 0 ||
+    strncmp(line, DIRECTIVE_NAMES[1], strlen(DIRECTIVE_NAMES[1])) == 0) {
         handle_directive(line);
-    } else if (strncmp(line, ".extern", 7) == 0) {
-        /* Handle .extern directive */
+    } else if (strncmp(line, DIRECTIVE_NAMES[2], strlen(DIRECTIVE_NAMES[2])) == 0) {
         line += 7;
         skip_whitespace(&line);
         add_symbol(line, IC+DC);
         IC++;
         symbol_table[symbol_count-1].is_external = 1;
-    } else if (strncmp(line, ".entry", 6) == 0) {
-        /* For .entry, mark the symbol as entry (in second pass) */
-        /* This will be handled in the second pass */
+
+    } else if (strncmp(line, DIRECTIVE_NAMES[3], strlen(DIRECTIVE_NAMES[3])) == 0) {
         line += 7;
         skip_whitespace(&line);
         add_symbol(line, IC+DC);
         IC++;
         symbol_table[symbol_count-1].is_entry = 1;
-    } else if (line[0] == '.') {
-        /* Handle unknown directives */
-        fprintf(stderr, "Error: Unknown directive: %s\n", line);
-    } else if (line[0] != '\0') {
-        /* Only process non-empty lines as instructions */
-        handle_instruction(line);
     }
+    else { handle_instruction(line); }
 }
 
 /*
@@ -127,8 +120,8 @@ static void handle_label(char* line) {
    3. Manages any instruction-related errors
  */
 static void handle_instruction(char* line) {
-    int command_index = find_command(line);
-    if (command_index == -1) {
+    OpCode command = find_command(line);
+    if (command == -1) {
         fprintf(stderr, "Error: Invalid instruction: %s\n", line);
         return;
     }

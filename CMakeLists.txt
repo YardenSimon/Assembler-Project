@@ -11,7 +11,8 @@ add_library(untitled STATIC
         encoder.c
         main.c
         macros.c
-        utils.c)
+        utils.c
+        globals.h)
 
 add_executable(assembler main.c
         utils.h)

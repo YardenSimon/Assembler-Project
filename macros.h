@@ -1,12 +1,10 @@
 
 #ifndef MACROS_H
 #define MACROS_H
+#include "globals.h"
 
 /* Maximum length for a macro name */
-#define MAX_MACRO_NAME 31
-
-/* Maximum length for macro content */
-#define MAX_MACRO_CONTENT 1000
+#define MAX_MACRO_NAME MAX_LABEL_LENGTH
 
 /* Structure to represent a macro */
 typedef struct {

@@ -1,9 +1,11 @@
 /* encoder.h */
 
+
 #ifndef ENCODER_H
 #define ENCODER_H
 
-#define WORD_SIZE 15
+#include "globals.h"
+
 
 /* MachineWord represents a 15-bit word in our assembly language.
  * We use a 16-bit unsigned short, but only utilize the lower 15 bits. */
@@ -27,11 +29,7 @@ typedef enum {
  * ARE_ABSOLUTE (4): The A bit (bit 2) is on, used for constants and instructions
  * ARE_RELOCATABLE (2): The R bit (bit 1) is on, used for relocatable addresses
  * ARE_EXTERNAL (1): The E bit (bit 0) is on, used for external references */
-typedef enum {
-    ARE_ABSOLUTE = 4,
-    ARE_RELOCATABLE = 2,
-    ARE_EXTERNAL = 1
-} AREType;
+
 
 /* Function to encode a single instruction into machine code */
 void encode_instruction(const char* instruction);

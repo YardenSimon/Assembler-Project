@@ -1,14 +1,12 @@
 /* encoder.c */
 
 #include "encoder.h"
-#include "symbol_table.h"
+
 #include "operand_validation.h"
 #include "utils.h"
 #include <string.h>
-#include <stdlib.h>
 #include <stdio.h>
 
-#define NUM_OPCODES 16
 #define MAX_OPERAND_LENGTH 20
 
 extern int IC;
@@ -19,19 +17,19 @@ extern int memory_size;
 /* Structure to hold information about each opcode */
 typedef struct {
     const char* name;
-    int value;
+    OpCode value;
 } OpcodeInfo;
 
 /* Array of all supported opcodes and their corresponding values */
 const OpcodeInfo opcodes[NUM_OPCODES] = {
-    {"mov", 0}, {"cmp", 1}, {"add", 2}, {"sub", 3},
-    {"lea", 4}, {"clr", 5}, {"not", 6}, {"inc", 7},
-    {"dec", 8}, {"jmp", 9}, {"bne", 10}, {"red", 11},
-    {"prn", 12}, {"jsr", 13}, {"rts", 14}, {"stop", 15}
+    {"mov", mov}, {"cmp", cmp}, {"add", add}, {"sub", sub},
+    {"lea", lea}, {"clr", clr}, {"not", not}, {"inc", inc},
+    {"dec", dec}, {"jmp", jmp}, {"bne", bne}, {"red", red},
+    {"prn", prn}, {"jsr", jsr}, {"rts", rts}, {"stop", stop}
 };
 
 /* Function prototypes for helper functions */
-static int get_opcode_value(const char* opcode_name);
+static OpCode get_opcode_value(const char* opcode_name);
 static void encode_operand(AddressingMethod method, const char* operand, int is_source);
 static void print_binary(MachineWord word);
 
@@ -39,7 +37,7 @@ static void print_binary(MachineWord word);
 void encode_instruction(const char* instruction) {
     char opcode_name[MAX_OPERAND_LENGTH];
     char source[MAX_OPERAND_LENGTH] = {0}, destination[MAX_OPERAND_LENGTH] = {0};
-    int opcode_value;
+    OpCode opcode_value;
     AddressingMethod src_method, dst_method;
     MachineWord encoded_word = 0;
     int operand_count;
@@ -47,7 +45,7 @@ void encode_instruction(const char* instruction) {
     printf("DEBUG: Encoding instruction: %s\n", instruction);
 
     /* Parse instruction into opcode and operands */
-    operand_count = extract_operands(instruction, opcode_name, source, destination);
+    // operand_count = extract_operands(instruction, opcode_name, source, destination);
 
     printf("DEBUG: Parsed - Opcode: %s, Source: %s, Destination: %s\n", opcode_name, source, destination);
 
@@ -58,9 +56,9 @@ void encode_instruction(const char* instruction) {
     printf("DEBUG: Opcode value: %d, Source method: %d, Destination method: %d\n", opcode_value, src_method, dst_method);
 
     /* Encode first word of instruction */
-    encoded_word |= ((opcode_value & 0xF) << 11);
-    encoded_word |= ((src_method & 0x3) << 9);
-    encoded_word |= ((dst_method & 0x3) << 7);
+    encoded_word |= ((opcode_value & ((1 << OPCODE_BITS) - 1)) << (WORD_SIZE - OPCODE_BITS));
+    encoded_word |= ((src_method & ((1 << SOURCE_ADDR_BITS) - 1)) << (WORD_SIZE - OPCODE_BITS - SOURCE_ADDR_BITS));
+    encoded_word |= ((dst_method & ((1 << DEST_ADDR_BITS) - 1)) << (WORD_SIZE - OPCODE_BITS - SOURCE_ADDR_BITS - DEST_ADDR_BITS));
     set_ARE(&encoded_word, ARE_ABSOLUTE);  /* Set A bit for instruction word */
 
     printf("DEBUG: Encoded first word: ");
@@ -89,7 +87,7 @@ void encode_instruction(const char* instruction) {
 }
 
 /* Get the numeric value of an opcode */
-static int get_opcode_value(const char* opcode_name) {
+static OpCode get_opcode_value(const char* opcode_name) {
     int i;
     for (i = 0; i < NUM_OPCODES; i++) {
         if (strcmp(opcodes[i].name, opcode_name) == 0) {
@@ -109,7 +107,7 @@ AddressingMethod get_addressing_method(const char* operand) {
         return ADDR_IMMEDIATE;
     } else if (operand[0] == '*') {
         return ADDR_INDEX;
-    } else if (operand[0] == 'r' && operand[1] >= '0' && operand[1] <= '7' && operand[2] == '\0') {
+    } else if (operand[0] == 'r' && operand[1] >= '0' && operand[1] < '0' + NUM_REGISTERS && operand[2] == '\0') {
         return ADDR_REGISTER;
     } else {
         return ADDR_DIRECT;
@@ -119,7 +117,7 @@ AddressingMethod get_addressing_method(const char* operand) {
 /* Encode an individual operand */
 static void encode_operand(AddressingMethod method, const char* operand, int is_source) {
     MachineWord encoded_operand = 0;
-    int register_num;
+    Register register_num;
 
     printf("DEBUG: Encoding operand: %s (method: %d, is_source: %d)\n", operand, method, is_source);
 
@@ -134,12 +132,12 @@ static void encode_operand(AddressingMethod method, const char* operand, int is_
         set_ARE(&encoded_operand, ARE_RELOCATABLE);  /* Will be resolved in second pass */
         break;
         case ADDR_INDEX:
-            register_num = operand[2] - '0';
+            register_num = (Register)(operand[2] - '0');
         encoded_operand = (1 << 15) | register_num;  /* Set high bit to mark as index */
         set_ARE(&encoded_operand, ARE_RELOCATABLE);  /* Will be resolved in second pass */
         break;
         case ADDR_REGISTER:
-            register_num = operand[1] - '0';
+            register_num = (Register)(operand[1] - '0');;
         encoded_operand = register_num;
         set_ARE(&encoded_operand, ARE_ABSOLUTE);
         break;
@@ -158,14 +156,13 @@ static void encode_operand(AddressingMethod method, const char* operand, int is_
 /* Print a MachineWord in binary format */
 static void print_binary(MachineWord word) {
     int i;
-    for (i = 14; i >= 0; i--) {  /* 15 bits, from MSB to LSB */
+    for (i = WORD_SIZE - 1; i >= 0; i--) {  /* 15 bits, from MSB to LSB */
         printf("%d", (word >> i) & 1);
         if (i % 5 == 0 && i != 0) printf(" ");  /* Space every 5 bits for readability */
     }
 }
-
 /* Set the ARE bits for a word */
 void set_ARE(MachineWord* word, AREType are) {
-    *word &= 0xFFF8;  /* Clear the last 3 bits */
+    *word &= ~((1 << ARE_BITS) - 1);  /* Clear the last ARE_BITS bits */
     *word |= are;     /* Set the ARE bits */
 }

@@ -2,6 +2,7 @@
 #include "operand_validation.h"
 #include "opcode_groups.h"
 #include "encoder.h"
+#include "globals.h"
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
@@ -33,11 +34,20 @@ const OpcodeAddressing opcode_addressing[NUM_OPCODES] = {
         {0,   0}  /* stop - source: null;    dest: null */
 };
 
+const char* OPCODE_NAMES[NUM_OPCODES] = {
+    "mov", "cmp", "add", "sub", "lea", "clr", "not", "inc",
+    "dec", "jmp", "bne", "red", "prn", "jsr", "rts", "stop"
+};
+
+const char* DIRECTIVE_NAMES[NUM_DIRECTIVES] = {
+    ".data", ".string", ".entry", ".extern"
+};
+
 /*The function checks if the opcode is valid.
   It selects the allowed addressing methods for either the source or destination operand.
   It checks if the given method is allowed by using a bitwise AND operation.
  */
-int validate_operand_addressing(int opcode, int is_source, int method) {
+int validate_operand_addressing(OpCode opcode, int is_source, int method) {
     unsigned char allowed;
 
     if (opcode < 0 || opcode >= NUM_OPCODES) {
@@ -60,42 +70,46 @@ int validate_operand_addressing(int opcode, int is_source, int method) {
    3. It checks the no. of operands and locate it to the right group of operands and looking for a match(opcode).
    If it can't find a match, it'll return -1.
  */
-int find_command(const char* line) {
+OpCode find_command(const char* line) {
     int j;
     int length;
-    const char* original_line = line;
+    char* current = (char*)line;  /* Cast to non-const for skip_whitespace */
 
-    skip_whitespace(&line);
-    if (is_label(line)) {
-        line = strchr(line, ':') + 1;
-        skip_whitespace(&line);
+    skip_whitespace(&current);
+
+    if (is_label(current)) {
+        char* colon = strchr(current, ':');
+        if (colon) {
+            current = colon + 1;
+            skip_whitespace(&current);
+        }
     }
 
     for (j = 0; j < TWO_OPERAND_COUNT; j++) {
         length = strlen(two_operand_opcodes[j]);
-        if (strncmp(line, two_operand_opcodes[j], length) == 0 &&
-            (line[length] == '\0' || isspace((unsigned char)line[length]))) {
-            return j;
-        }
+        if (strncmp(current, two_operand_opcodes[j], length) == 0 &&
+            (current[length] == '\0' || isspace((unsigned char)current[length]))) {
+            return (OpCode)j;
+            }
     }
 
     for (j = 0; j < ONE_OPERAND_COUNT; j++) {
         length = strlen(one_operand_opcodes[j]);
-        if (strncmp(line, one_operand_opcodes[j], length) == 0 &&
-            (line[length] == '\0' || isspace((unsigned char)line[length]))) {
-            return j + TWO_OPERAND_COUNT;
-        }
+        if (strncmp(current, one_operand_opcodes[j], length) == 0 &&
+            (current[length] == '\0' || isspace((unsigned char)current[length]))) {
+            return (OpCode)(j + TWO_OPERAND_COUNT);
+            }
     }
 
     for (j = 0; j < ZERO_OPERAND_COUNT; j++) {
         length = strlen(zero_operand_opcodes[j]);
-        if (strncmp(line, zero_operand_opcodes[j], length) == 0 &&
-            (line[length] == '\0' || isspace((unsigned char)line[length]))) {
-            return j + TWO_OPERAND_COUNT + ONE_OPERAND_COUNT;
-        }
+        if (strncmp(current, zero_operand_opcodes[j], length) == 0 &&
+            (current[length] == '\0' || isspace((unsigned char)current[length]))) {
+            return (OpCode)(j + TWO_OPERAND_COUNT + ONE_OPERAND_COUNT);
+            }
     }
 
-    return -1;
+    return (OpCode)-1;  /* Invalid opcode */
 }
 
 
@@ -146,7 +160,7 @@ int is_valid_label_operand(const char* str) {
 }
 
 /* The function checks if the operand is a register or an immediate value (#number) */
-int validate_operand(const char* op, int opcode, int is_source) {
+int validate_operand(const char* op, OpCode opcode, int is_source) {
     AddressingMethod method;
 
     if (op == NULL || op[0] == '\0') {
@@ -157,6 +171,7 @@ int validate_operand(const char* op, int opcode, int is_source) {
     if (method == -1) {
         return 0;
     }
+
 
     return validate_operand_addressing(opcode, is_source, method);
 }
@@ -236,21 +251,22 @@ int extract_operands(const char* line, char* opcode, char* first_operand, char* 
 int validate_instruction(const char* line) {
     char first_operand[MAX_OPERANDS] = {0};
     char second_operand[MAX_OPERANDS] = {0};
-    int opcode;
+    OpCode opcode;
     int operand_count;
+    int expected_count;
 
     printf("DEBUG: Validating instruction: '%s'\n", line);
 
     opcode = find_command(line);
-    printf("DEBUG: Found opcode: %d\n", opcode);
+    printf("DEBUG: Found opcode: %s\n", OPCODE_NAMES[opcode]);
 
-    if (opcode == -1) {
-        printf("DEBUG:  Invalid opcode\n");
+    if (opcode == (OpCode)-1) {
+        printf("DEBUG: Invalid opcode\n");
         return 0;
     }
 
-    operand_count = extract_operands(line, first_operand, second_operand, opcode);
-    printf("DEBUG:  Extracted operands - First: '%s', Second: '%s', Count: %d\n",
+    operand_count = extract_operands(line, NULL, first_operand, second_operand);
+    printf("DEBUG: Extracted operands - First: '%s', Second: '%s', Count: %d\n",
            first_operand, second_operand, operand_count);
 
     if (operand_count == -1) {
@@ -258,13 +274,19 @@ int validate_instruction(const char* line) {
         return 0;
     }
 
-    int expected_count = count_operands(line);
+    expected_count = count_operands(line);
     printf("DEBUG: Expected operand count: %d, Actual count: %d\n", expected_count, operand_count);
 
     if (operand_count != expected_count) {
         printf("DEBUG: Operand count mismatch\n");
         return 0;
     }
+
+    if (!validate_operand(first_operand, opcode, 1) ||
+        (operand_count == 2 && !validate_operand(second_operand, opcode, 0))) {
+        printf("DEBUG: Invalid operand(s)\n");
+        return 0;
+        }
 
     printf("DEBUG: Instruction validated successfully\n");
     return 1;

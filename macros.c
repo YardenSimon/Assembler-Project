@@ -1,30 +1,17 @@
 #include "macros.h"
 #include "utils.h"
+#include "globals.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 
-#define MAX_LINE_LENGTH 80
-#define MAX_FILENAME_LENGTH 256
 #define INITIAL_MACRO_CAPACITY 10
 
 Macro* macros = NULL;
 int macro_count = 0;
 int macro_capacity = 0;
 
-const char *group1[] = {"mov", "cmp", "add", "sub", "lea"};
-const int group1_count = sizeof(group1) / sizeof(group1[0]);
 
-const char *group2[] = {"clr", "not", "inc", "dec", "jmp", "bne", "jsr"};
-const int group2_count = sizeof(group2) / sizeof(group2[0]);
-
-const char *group3[] = {"red", "prn", "rts", "stop"};
-const int group3_count = sizeof(group3) / sizeof(group3[0]);
-
-const char *instruction_words[] = {".data", ".string", ".entry", ".extern"};
-const int instruction_words_count = sizeof(instruction_words) / sizeof(instruction_words[0]);
-
-static int word_in_list(const char *word, const char *list[], int list_count);
 static char* read_line(FILE *file);
 static void resize_macro_array(void);
 static Macro* find_macro(const char *name);
@@ -39,21 +26,16 @@ void init_macros(void) {
     macros = (Macro*)safe_malloc(macro_capacity * sizeof(Macro));
 }
 
-static int word_in_list(const char *word, const char *list[], int list_count) {
-    int i;
-    for (i = 0; i < list_count; i++) {
-        if (strcmp(word, list[i]) == 0) {
-            return 1;
-        }
-    }
-    return 0;
-}
 
 int can_be_macro_name(const char *word) {
-    return !(word_in_list(word, group1, group1_count) ||
-             word_in_list(word, group2, group2_count) ||
-             word_in_list(word, group3, group3_count) ||
-             word_in_list(word, instruction_words, instruction_words_count));
+    int i;
+    for (i = 0; i < NUM_OPCODES; i++) {
+        if (strcmp(word, OPCODE_NAMES[i]) == 0) return 0;
+    }
+    for (i = 0; i < NUM_DIRECTIVES; i++) {
+        if (strcmp(word, DIRECTIVE_NAMES[i]) == 0) return 0;
+    }
+    return 1;
 }
 
 static char* read_line(FILE *file) {
@@ -200,7 +182,7 @@ void replace_macros(const char *input_name) {
 
     strncpy(output_name, base_filename.name, base_filename.length);
     output_name[base_filename.length] = '\0';
-    strcat(output_name, ".am");
+    strcat(output_name, MACRO_FILE_EXT);
 
     process_macros(input_name, output_name);
 

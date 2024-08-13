@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#define INITIAL_SYMBOL_CAPACITY 10
+static const int INITIAL_SYMBOL_CAPACITY = 10;
 int symbol_exists(const char* name);
 Symbol* symbol_table = NULL;
 static int symbol_capacity = 0;
@@ -83,17 +83,6 @@ Symbol* get_symbol_by_index(int index) {
     return NULL;
 }
 
-// void mark_external(const char* name) {
-//     Symbol* symbol = get_symbol_by_name(name);
-//     if (symbol != NULL) {
-//         symbol->is_external = 1;
-//         symbol->address = 0;  /* External symbols have address 0 */
-//     } else {
-//         add_symbol(name, 0);
-//         symbol_table[symbol_count - 1].is_external = 1;
-//     }
-//     printf("DEBUG: Marked symbol %s as external\n", name);
-// }
 
 void free_symbol_table(void) {
     free(symbol_table);
@@ -109,12 +98,13 @@ int get_symbol_count(void) {
 void print_symbol_table(void) {
     int i;
     printf("\n--- Symbol Table ---\n");
-    printf("%-20s %-10s %-10s %-10s\n", "Name", "Address", "External", "Entry");
+    printf("%-*s %-10s %-10s %-10s\n", MAX_SYMBOL_LENGTH, "Name", "Address", "External", "Entry");
     printf("----------------------------------------\n");
     for (i = 0; i < get_symbol_count(); i++) {
         Symbol* symbol = get_symbol_by_index(i);
         if (symbol != NULL) {
-            printf("%-20s %-10d %-10s %-10s\n",
+            printf("%-*s %-10d %-10s %-10s\n",
+                   MAX_SYMBOL_LENGTH,
                    symbol->name,
                    symbol->address,
                    symbol->is_external ? "Yes" : "No",
