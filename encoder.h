@@ -3,26 +3,43 @@
 #ifndef ENCODER_H
 #define ENCODER_H
 
-#include <stdint.h>
-
 #define WORD_SIZE 15
 
-/* 16-bit unsigned integer type to represent a machine word
- * Used to store 15-bit words, leaving the MSB unused */
+/* MachineWord represents a 15-bit word in our assembly language.
+ * We use a 16-bit unsigned short, but only utilize the lower 15 bits. */
 typedef unsigned short MachineWord;
 
-/* Enum to represent different addressing methods for operands */
+/* AddressingMethod enum represents the five addressing methods in our assembly language:
+ * 0 - None: No operand
+ * 1 - Immediate: A constant value, e.g., #5
+ * 2 - Direct: A memory address or label
+ * 3 - Index: Addressing using a base address and an index register, e.g., *r3
+ * 4 - Register: Direct register addressing, e.g., r7 */
 typedef enum {
-    ADDR_IMMEDIATE,  /* Immediate value, for example #5 */
-    ADDR_DIRECT,     /* Direct address or label */
-    ADDR_INDEX,      /* Index addressing, for example *r3 */
-    ADDR_REGISTER    /* Register addressing, for example r7 */
+    ADDR_NONE,
+    ADDR_IMMEDIATE,
+    ADDR_DIRECT,
+    ADDR_INDEX,
+    ADDR_REGISTER
 } AddressingMethod;
 
-/* Encode a single instruction into machine code */
+/* AREType enum represents the ARE (Absolute, Relocatable, External) bits:
+ * ARE_ABSOLUTE (4): The A bit (bit 2) is on, used for constants and instructions
+ * ARE_RELOCATABLE (2): The R bit (bit 1) is on, used for relocatable addresses
+ * ARE_EXTERNAL (1): The E bit (bit 0) is on, used for external references */
+typedef enum {
+    ARE_ABSOLUTE = 4,
+    ARE_RELOCATABLE = 2,
+    ARE_EXTERNAL = 1
+} AREType;
+
+/* Function to encode a single instruction into machine code */
 void encode_instruction(const char* instruction);
 
-/* Determine the addressing method of an operand */
+/* Function to determine the addressing method of an operand */
 AddressingMethod get_addressing_method(const char* operand);
+
+/* Function to set the ARE bits for a word */
+void set_ARE(MachineWord* word, AREType are);
 
 #endif /* ENCODER_H */

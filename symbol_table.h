@@ -1,27 +1,27 @@
-/* symbol_table.h */
-#include <stdbool.h>
 #ifndef SYMBOL_TABLE_H
 #define SYMBOL_TABLE_H
 
-#define MAX_SYMBOL_LENGTH 80
+#define MAX_SYMBOL_LENGTH 31
 
 typedef struct {
-    char name[MAX_SYMBOL_LENGTH];
+    char name[MAX_SYMBOL_LENGTH + 1];
     int address;
     int is_external;
     int is_entry;
 } Symbol;
 
-Symbol* get_symbol_by_address(int address);
-bool has_external_symbols(void);
-bool has_entry_symbols(void);
-Symbol* get_first_symbol(void);
-Symbol* get_next_symbol(void);
-void init_symbol_table();
+extern Symbol* symbol_table;
+extern int symbol_count;
+
+
+void init_symbol_table(void);
 void add_symbol(const char* name, int address);
-int lookup_symbol(const char* name);
+Symbol* get_symbol_by_name(const char* name);
 void mark_external(const char* name);
-void mark_entry(const char* name);
-void free_symbol_table();
+void free_symbol_table(void);
+int get_symbol_count(void);
+Symbol* get_symbol_by_index(int index);
+
+void print_symbol_table(void);
 
 #endif /* SYMBOL_TABLE_H */

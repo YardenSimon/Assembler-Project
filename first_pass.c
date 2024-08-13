@@ -1,5 +1,6 @@
 /* first_pass.c */
 
+#include "utils.h"
 #include "first_pass.h"
 #include "encoder.h"
 #include "symbol_table.h"
@@ -32,26 +33,18 @@ void perform_first_pass(const char* filename) {
     FILE* file;
     char line[MAX_LINE_LENGTH + 1];
 
-    file = fopen(filename, "r");
-    if (file == NULL) {
-        fprintf(stderr, "Error opening file: %s\n", filename);
-        return;
-    }
+    file = safe_fopen(filename, "r");
 
     IC = 100;
     DC = 0;
 
     memory_size = INITIAL_MEMORY_SIZE;
-    memory = (MachineWord*)calloc(memory_size, sizeof(MachineWord));
-    if (memory == NULL) {
-        fprintf(stderr, "Error: Memory allocation failed\n");
-        fclose(file);
-        return;
-    }
+    memory = (MachineWord*)safe_malloc(memory_size * sizeof(MachineWord*));
+    memset(memory, 0, memory_size * sizeof(MachineWord*));
 
     init_symbol_table();
 
-    while (fgets(line, sizeof(line), file)) {
+    while (safe_fgets(line, sizeof(line), file) != NULL) {
         line[strcspn(line, "\n")] = 0;
         if (line[0] == ';' || line[0] == '\0') continue;
         process_line(line);
@@ -70,13 +63,13 @@ void perform_first_pass(const char* filename) {
 static void process_line(char* line) {
 
     /* Skip leading whitespace */
-    while (isspace((unsigned char)*line)) line++;
+    skip_whitespace(&line);
 
     if (is_label(line)) {
         handle_label(line);
         /* Move past the label for further processing */
         line = strchr(line, ':') + 1;
-        while (isspace((unsigned char)*line)) line++;
+        skip_whitespace(&line);
     }
 
     if (strncmp(line, ".data", 5) == 0 || strncmp(line, ".string", 7) == 0) {
@@ -84,11 +77,18 @@ static void process_line(char* line) {
     } else if (strncmp(line, ".extern", 7) == 0) {
         /* Handle .extern directive */
         line += 7;
-        while (isspace((unsigned char)*line)) line++;
-        add_symbol(line, 0);
+        skip_whitespace(&line);
+        add_symbol(line, IC+DC);
+        IC++;
+        symbol_table[symbol_count-1].is_external = 1;
     } else if (strncmp(line, ".entry", 6) == 0) {
         /* For .entry, mark the symbol as entry (in second pass) */
         /* This will be handled in the second pass */
+        line += 7;
+        skip_whitespace(&line);
+        add_symbol(line, IC+DC);
+        IC++;
+        symbol_table[symbol_count-1].is_entry = 1;
     } else if (line[0] == '.') {
         /* Handle unknown directives */
         fprintf(stderr, "Error: Unknown directive: %s\n", line);
@@ -118,7 +118,7 @@ static void handle_label(char* line) {
     label[label_length] = '\0';
     add_symbol(label, IC);
     line = colon + 1;
-    while (isspace((unsigned char)*line)) line++;
+    skip_whitespace(&line);
 }
 
 /* This function processes assembly instructions:
@@ -161,30 +161,21 @@ static void handle_directive(char* line) {
             }
             line = endptr;
 
-            if (add_to_memory((MachineWord)value) == -1) {
-                return;
-            }
             DC++;
         }
     } else if (strncmp(line, ".string", 7) == 0) {
         line += 7;
-        while (isspace((unsigned char)*line)) line++;
+        skip_whitespace(&line);
         if (*line != '"') {
             fprintf(stderr, "Error: String must start with a quote\n");
             return;
         }
         line++;
         while (*line && *line != '"') {
-            if (add_to_memory((MachineWord)(unsigned char)*line) == -1) {
-                return;
-            }
             DC++;
             line++;
         }
         /* Add null terminator */
-        if (add_to_memory(0) == -1) {
-            return;
-        }
         DC++;
     }
 }
@@ -200,11 +191,8 @@ static int add_to_memory(MachineWord word) {
     if (current_address >= memory_size) {
         MachineWord* new_memory;
         memory_size *= 2;
-        new_memory = (MachineWord*)realloc(memory, memory_size * sizeof(MachineWord));
-        if (new_memory == NULL) {
-            fprintf(stderr, "Error: Memory reallocation failed\n");
-            return -1;
-        }
+        new_memory = (MachineWord*)safe_malloc(memory_size * sizeof(MachineWord*));
+        memset(memory, 0, memory_size * sizeof(MachineWord*));
         memory = new_memory;
     }
     memory[current_address] = word;
@@ -212,8 +200,12 @@ static int add_to_memory(MachineWord word) {
 }
 
 void free_memory(void) {
-    free(memory);
-    memory = NULL;
+    if (memory != NULL) {
+        free(memory);
+        memory = NULL;
+    }
     memory_size = 0;
-    free_symbol_table();
+    IC = 100;  // Reset Instruction Counter
+    DC = 0;    // Reset Data Counter
 }
+

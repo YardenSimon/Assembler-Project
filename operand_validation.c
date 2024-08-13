@@ -1,7 +1,9 @@
+#include "utils.h"
 #include "operand_validation.h"
 #include "opcode_groups.h"
 #include "encoder.h"
 #include <ctype.h>
+#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -63,10 +65,10 @@ int find_command(const char* line) {
     int length;
     const char* original_line = line;
 
-    while (*line && isspace((unsigned char)*line)) line++;
+    skip_whitespace(&line);
     if (is_label(line)) {
         line = strchr(line, ':') + 1;
-        while (*line && isspace((unsigned char)*line)) line++;
+        skip_whitespace(&line);
     }
 
     for (j = 0; j < TWO_OPERAND_COUNT; j++) {
@@ -119,7 +121,7 @@ int is_label(const char* str) {
         if (label_length > MAX_LABEL_LENGTH) return 0;
     }
 
-    return (str[i] == ':' && label_length > 0 && label_length <= MAX_LABEL_LENGTH);
+    return (str[i] == ':' && label_length > 0);
 }
 
 /* This function checks if a given string is a valid label when used as an operand in an instruction.
@@ -140,7 +142,7 @@ int is_valid_label_operand(const char* str) {
         if (label_length > MAX_LABEL_LENGTH) return 0;
     }
 
-    return (label_length > 0 && label_length <= MAX_LABEL_LENGTH);
+    return (label_length > 0);
 }
 
 /* The function checks if the operand is a register or an immediate value (#number) */
@@ -177,62 +179,93 @@ int count_operands(const char* line) {
    4. It then looks for a comma, which would separate two operands.
    5. The function uses validate_operand to check the validity of each extracted operand.
 */
-int extract_operands(const char* line, char* first_operand, char* second_operand, int opcode) {
-    const char* start;
+int extract_operands(const char* line, char* opcode, char* first_operand, char* second_operand) {
+    const char* start = line;
     const char* end;
     size_t length;
+    int operand_count = 0;
 
-    start = strchr(line, ' ');
-    if (start == NULL) return 0;
-    start++;
+    /* Initialize output parameters */
+    opcode[0] = first_operand[0] = second_operand[0] = '\0';
 
-    end = strchr(start, ',');
-    if (end == NULL) {
-        strcpy(first_operand, start);
-        if (!validate_operand(first_operand, opcode, 1)) {
-            return -1;
-        }
-        return 1;
-    }
+    /* Skip leading whitespace */
+    while (*start && isspace((unsigned char)*start)) start++;
 
+    /* Extract opcode */
+    end = start;
+    while (*end && !isspace((unsigned char)*end)) end++;
     length = end - start;
-    strncpy(first_operand, start, length);
-    first_operand[length] = '\0';
-    if (!validate_operand(first_operand, opcode, 1)) {
-        return -1;
+    if (length > 0) {
+        strncpy(opcode, start, length);
+        opcode[length] = '\0';
+    } else {
+        return 0; /* No opcode found */
     }
 
-    start = end + 1;
-    while (*start && isspace((unsigned char)*start)) {
-        start++;
-    }
-    strcpy(second_operand, start);
-    if (!validate_operand(second_operand, opcode, 0)) {
-        return -1;
+    /* Move to first operand */
+    start = end;
+    while (*start && isspace((unsigned char)*start)) start++;
+
+    /* Extract first operand if present */
+    if (*start) {
+        end = start;
+        while (*end && *end != ',' && !isspace((unsigned char)*end)) end++;
+        length = end - start;
+        strncpy(first_operand, start, length);
+        first_operand[length] = '\0';
+        operand_count++;
+
+        /* Move to second operand */
+        start = end;
+        while (*start && (*start == ',' || isspace((unsigned char)*start))) start++;
+
+        /* Extract second operand if present */
+        if (*start) {
+            end = start + strlen(start);
+            while (end > start && isspace((unsigned char)*(end-1))) end--;
+            length = end - start;
+            strncpy(second_operand, start, length);
+            second_operand[length] = '\0';
+            operand_count++;
+        }
     }
 
-    return 2;
+    return operand_count;
 }
 
 int validate_instruction(const char* line) {
     char first_operand[MAX_OPERANDS] = {0};
     char second_operand[MAX_OPERANDS] = {0};
-    int opcode = find_command(line);
+    int opcode;
     int operand_count;
 
+    printf("DEBUG: Validating instruction: '%s'\n", line);
+
+    opcode = find_command(line);
+    printf("DEBUG: Found opcode: %d\n", opcode);
+
     if (opcode == -1) {
+        printf("DEBUG:  Invalid opcode\n");
         return 0;
     }
 
     operand_count = extract_operands(line, first_operand, second_operand, opcode);
+    printf("DEBUG:  Extracted operands - First: '%s', Second: '%s', Count: %d\n",
+           first_operand, second_operand, operand_count);
 
     if (operand_count == -1) {
+        printf("DEBUG: Failed to extract operands\n");
         return 0;
     }
 
-    if (operand_count != count_operands(line)) {
+    int expected_count = count_operands(line);
+    printf("DEBUG: Expected operand count: %d, Actual count: %d\n", expected_count, operand_count);
+
+    if (operand_count != expected_count) {
+        printf("DEBUG: Operand count mismatch\n");
         return 0;
     }
 
+    printf("DEBUG: Instruction validated successfully\n");
     return 1;
 }

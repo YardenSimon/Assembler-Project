@@ -10,7 +10,9 @@ add_library(untitled STATIC
         symbol_table.c
         encoder.c
         main.c
-        macros.c)
+        macros.c
+        utils.c)
 
-add_executable(assembler main.c)
+add_executable(assembler main.c
+        utils.h)
 target_link_libraries(assembler untitled)

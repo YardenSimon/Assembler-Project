@@ -9,4 +9,5 @@
 void perform_first_pass(const char* filename);
 void free_memory(void);
 
+
 #endif /* FIRST_PASS_H */

@@ -15,7 +15,7 @@ int find_command(const char* line);
 int is_label(const char* str);
 int validate_operand(const char* op, int opcode, int is_source);
 int count_operands(const char* line);
-int extract_operands(const char* line, char* first_operand, char* second_operand, int opcode);
+int extract_operands(const char* line, char* opcode, char* first_operand, char* second_operand);
 int validate_instruction(const char* line);
 
 

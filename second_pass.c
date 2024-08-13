@@ -1,3 +1,6 @@
+/* second_pass.c */
+
+#include "utils.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -5,102 +8,70 @@
 #include "symbol_table.h"
 #include "encoder.h"
 
-#define MAX_LINE_LENGTH 80
 #define MAX_FILENAME_LENGTH 256
 
 extern int IC;
 extern int DC;
 extern MachineWord* memory;
-extern int memory_size;
-
 
 static void update_symbol_addresses(void);
 static void create_output_files(const char* filename);
 static void write_object_file(const char* filename);
 static void write_externals_file(const char* filename);
 static void write_entries_file(const char* filename);
-static unsigned short create_address_word(int address, int are);
 static char* convert_to_octal(unsigned short num);
 static char* get_filename_without_extension(const char* filename);
 
-
-/* Main function for the second pass of the assembler
-    It updates all symbol addresses in the assembled code and generates output files.
-    */
 void perform_second_pass(const char* filename) {
+    printf("DEBUG: Starting second pass for file: %s\n", filename);
 
     update_symbol_addresses();
     create_output_files(filename);
+
+    printf("DEBUG: Second pass completed successfully\n");
 }
 
-/* Update symbol addresses in the assembled code
-    It creates a new word for each symbol address, containing only the address value and ARE field.
-    */
 static void update_symbol_addresses(void) {
-
     int i;
-    unsigned short word;
     Symbol* symbol;
+    char symbol_name[MAX_SYMBOL_LENGTH + 1];
 
+    printf("DEBUG: Updating symbol addresses\n");
     for (i = 0; i < IC + DC - 100; i++) {
-        word = memory[i];
-
-        if (word & 0x0002) { /* R bit is set */
-            symbol = get_symbol_by_address(i + 100);
+        if ((memory[i] & 0x0007) == ARE_RELOCATABLE) {
+            strncpy(symbol_name, (char*)&memory[i], sizeof(MachineWord));
+            symbol_name[sizeof(MachineWord)] = '\0';
+            symbol = get_symbol_by_name(symbol_name);
             if (symbol != NULL) {
-                /* Create a new word with only address and ARE field */
-                memory[i] = create_address_word(symbol->address, 2); /* 2 for relocatable */
-            }
-        } else if (word & 0x0001) { /* E bit is set */
-            symbol = get_symbol_by_address(i + 100);
-            if (symbol != NULL && symbol->is_external) {
-                /* For external symbols, address is 0 and E bit is set */
-                memory[i] = create_address_word(0, 1); /* 1 for external */
+                if (symbol->is_external) {
+                    memory[i] = (symbol->address << 3) | ARE_EXTERNAL;
+                    printf("DEBUG: Updated external symbol %s at address %d\n", symbol_name, i + 100);
+                } else {
+                    memory[i] = (symbol->address << 3) | ARE_RELOCATABLE;
+                    printf("DEBUG: Updated relocatable symbol %s at address %d\n", symbol_name, i + 100);
+                }
+            } else {
+                fprintf(stderr, "Error: Undefined symbol %s at address %d\n", symbol_name, i + 100);
             }
         }
     }
 }
 
-
-/* This function creates the necessary output files for the assembler.
-    1. It always generates the object file (.ob).
-    2. It only creates .ext and .ent files if there are external or entry symbols, respectively.
-    3. All output files use the input filename as their base.
-    */
 static void create_output_files(const char* filename) {
-
     char* base_filename = get_filename_without_extension(filename);
-
     write_object_file(base_filename);
-
-    if (has_external_symbols()) {
-        write_externals_file(base_filename);
-    }
-
-    if (has_entry_symbols()) {
-        write_entries_file(base_filename);
-    }
-
+    write_externals_file(base_filename);
+    write_entries_file(base_filename);
     free(base_filename);
 }
 
-/* Write the object file (.ob) with the assembled machine code
-     File format:
-     1. First line: <IC> <DC>
-     2. In every line: <address in decimal> <word in octal>
-     */
 static void write_object_file(const char* filename) {
-
     char ob_filename[MAX_FILENAME_LENGTH];
     FILE* ob_file;
     int i;
 
     sprintf(ob_filename, "%s.ob", filename);
-    ob_file = fopen(ob_filename, "w");
-    if (ob_file == NULL) {
-        fprintf(stderr, "Error: Unable to create object file.\n");
-        return;
-    }
+    ob_file = safe_fopen(ob_filename, "w");
 
     fprintf(ob_file, "%d %d\n", IC - 100, DC);
 
@@ -109,97 +80,100 @@ static void write_object_file(const char* filename) {
     }
 
     fclose(ob_file);
+    printf("DEBUG: Object file '%s' created successfully\n", ob_filename);
 }
 
-/* Write the externals file (.ext) listing external symbol references
-     File format: <symbol_name> <address>
-     */
 static void write_externals_file(const char* filename) {
-
     char ext_filename[MAX_FILENAME_LENGTH];
-    FILE* ext_file;
+    FILE* ext_file = NULL;
     int i;
     Symbol* symbol;
+    int external_count = 0;
 
-    sprintf(ext_filename, "%s.ext", filename);
-    ext_file = fopen(ext_filename, "w");
-    if (ext_file == NULL) {
-        fprintf(stderr, "Error: Unable to create externals file.\n");
-        return;
+    /* First, count the number of external symbols */
+    for (i = 0; i < get_symbol_count(); i++) {
+        symbol = get_symbol_by_index(i);
+        if (symbol->is_external) {
+            external_count++;
+        }
     }
 
-    for (i = 0; i < IC + DC - 100; i++) {
-        if (memory[i] & 0x0001) { /* E bit is set */
-            symbol = get_symbol_by_address(i + 100);
-            if (symbol != NULL && symbol->is_external) {
-                fprintf(ext_file, "%s %04d\n", symbol->name, i + 100);
+    /* Only create the file if there are external symbols */
+    if (external_count > 0) {
+        sprintf(ext_filename, "%s.ext", filename);
+        ext_file = safe_fopen(ext_filename, "w");
+
+        for (i = 0; i < get_symbol_count(); i++) {
+            symbol = get_symbol_by_index(i);
+            if (symbol->is_external) {
+                fprintf(ext_file, "%s %04d\n", symbol->name, symbol->address);
+                printf("DEBUG: Wrote external symbol %s at address %04d\n", symbol->name, symbol->address);
             }
         }
-    }
 
-    fclose(ext_file);
+        fclose(ext_file);
+        printf("DEBUG: Externals file '%s' created successfully\n", ext_filename);
+    } else {
+        printf("DEBUG: No external symbols found, externals file not created\n");
+    }
 }
 
-/* Write the entries file (.ent) listing entry symbols
-    File format: <symbol_name> <address>
-    It writes all symbols marked as entry in the symbol table.
-    */
 static void write_entries_file(const char* filename) {
-
     char ent_filename[MAX_FILENAME_LENGTH];
-    FILE* ent_file;
+    FILE* ent_file = NULL;
+    int i;
     Symbol* symbol;
+    int entry_count = 0;
 
-    sprintf(ent_filename, "%s.ent", filename);
-    ent_file = fopen(ent_filename, "w");
-    if (ent_file == NULL) {
-        fprintf(stderr, "Error: Unable to create entries file.\n");
-        return;
-    }
-
-    symbol = get_first_symbol();
-    while (symbol != NULL) {
+    /* First, count the number of entry symbols */
+    for (i = 0; i < get_symbol_count(); i++) {
+        symbol = get_symbol_by_index(i);
         if (symbol->is_entry) {
-            fprintf(ent_file, "%s %04d\n", symbol->name, symbol->address);
+            entry_count++;
         }
-        symbol = get_next_symbol();
     }
 
-    fclose(ent_file);
+    /* Only create the file if there are entry symbols */
+    if (entry_count > 0) {
+        sprintf(ent_filename, "%s.ent", filename);
+        ent_file = safe_fopen(ent_filename, "w");
+
+        for (i = 0; i < get_symbol_count(); i++) {
+            symbol = get_symbol_by_index(i);
+            if (symbol->is_entry) {
+                fprintf(ent_file, "%s %04d\n", symbol->name, symbol->address);
+                printf("DEBUG: Wrote entry symbol %s at address %04d\n", symbol->name, symbol->address);
+            }
+        }
+
+        fclose(ent_file);
+        printf("DEBUG: Entries file '%s' created successfully\n", ent_filename);
+    } else {
+        printf("DEBUG: No entry symbols found, entries file not created\n");
+    }
 }
 
-/* Create an address word with only the address value and ARE field
-    The address is set to bits 2-16, and the ARE field is set to bits 0-1.
-    */
-static unsigned short create_address_word(int address, int are) {
-
-    return (address << 2) | (are & 0x03);
-}
-
-/* Convert a decimal number to its octal representation as a string
-     The octal string is always 5 digits long, with leading zeros if needed.
-     */
 static char* convert_to_octal(unsigned short num) {
+    static char octal_str[7];
+    int i;
+    unsigned short mask = 0x7000;
 
-    static char octal_str[7]; /* 5 octal digits + possible negative sign + null terminator */
-    sprintf(octal_str, "%05o", num);
+    for (i = 0; i < 5; i++) {
+        octal_str[i] = ((num & mask) >> (12 - 3*i)) + '0';
+        mask >>= 3;
+    }
+    octal_str[5] = '\0';
+
     return octal_str;
 }
 
-/* This function extracts the filename without its extension */
 static char* get_filename_without_extension(const char* filename) {
+    BaseFilename base_filename = get_base_filename(filename);
+    char* result = (char*)safe_malloc(base_filename.length + 1);
 
-    char* dot_position = strrchr(filename, '.');
-    size_t length = (dot_position != NULL) ? (size_t)(dot_position - filename) : strlen(filename);
-    char* result = (char*)malloc(length + 1);
+    strncpy(result, base_filename.name, base_filename.length);
+    result[base_filename.length] = '\0';
 
-    if (result == NULL) {
-        fprintf(stderr, "Error: Memory allocation failed for filename.\n");
-        exit(1);
-    }
-
-    strncpy(result, filename, length);
-    result[length] = '\0';
-
+    free(base_filename.name);
     return result;
 }
