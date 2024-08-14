@@ -12,21 +12,25 @@
 #include <stdlib.h>
 
 int IC = INITIAL_MEMORY_ADDRESS; /* Instruction Counter */
-int DC = 0;   /* Data Counter */
-MachineWord* memory = NULL;
+int DC = 0; /* Data Counter */
+MachineWord *memory = NULL;
 int memory_size = 0;
 
-static void process_line(char* line);
-static void handle_label(char* line);
-static void handle_instruction(char* line);
-static void handle_directive(char* line);
+static void process_line(char *line);
+
+static void handle_label(char *line);
+
+static void handle_instruction(char *line);
+
+static void handle_directive(char *line);
+
 static int add_to_memory(MachineWord word);
 
-const char* DIRECTIVE_NAMES[NUM_DIRECTIVES] = {
+const char *DIRECTIVE_NAMES[NUM_DIRECTIVES] = {
     ".data", ".string", ".entry", ".extern"
 };
 
-const char* OPCODE_NAMES[NUM_OPCODES] = {
+const char *OPCODE_NAMES[NUM_OPCODES] = {
     "mov", "cmp", "add", "sub", "lea", "clr", "not", "inc",
     "dec", "jmp", "bne", "red", "prn", "jsr", "rts", "stop"
 };
@@ -37,8 +41,8 @@ const char* OPCODE_NAMES[NUM_OPCODES] = {
   3. Processes the file line by line, calling process_line for each
   4. Handles any file-related errors
  */
-void perform_first_pass(const char* filename) {
-    FILE* file;
+void perform_first_pass(const char *filename) {
+    FILE *file;
     char line[MAX_LINE_LENGTH + 1];
 
     file = safe_fopen(filename, "r");
@@ -47,8 +51,8 @@ void perform_first_pass(const char* filename) {
     DC = 0;
 
     memory_size = MEMORY_SIZE;
-    memory = (MachineWord*)safe_malloc(memory_size * sizeof(MachineWord*));
-    memset(memory, 0, memory_size * sizeof(MachineWord*));
+    memory = (MachineWord *) safe_malloc(memory_size * sizeof(MachineWord *));
+    memset(memory, 0, memory_size * sizeof(MachineWord *));
 
     init_symbol_table();
 
@@ -68,8 +72,7 @@ void perform_first_pass(const char* filename) {
  3. Calls appropriate handlers (handle_directive or handle_instruction)
  4. Manages .extern directives by adding them to the symbol table
  */
-static void process_line(char* line) {
-
+static void process_line(char *line) {
     /* Skip leading whitespace */
     skip_whitespace(&line);
 
@@ -81,24 +84,21 @@ static void process_line(char* line) {
     }
 
     if (strncmp(line, DIRECTIVE_NAMES[0], strlen(DIRECTIVE_NAMES[0])) == 0 ||
-    strncmp(line, DIRECTIVE_NAMES[1], strlen(DIRECTIVE_NAMES[1])) == 0) {
+        strncmp(line, DIRECTIVE_NAMES[1], strlen(DIRECTIVE_NAMES[1])) == 0) {
         handle_directive(line);
-
     } else if (strncmp(line, DIRECTIVE_NAMES[2], strlen(DIRECTIVE_NAMES[2])) == 0) {
         line += 7;
         skip_whitespace(&line);
-        add_symbol(line, IC+DC);
+        add_symbol(line, IC + DC);
         IC++;
-        symbol_table[symbol_count-1].is_external = 1;
-
+        symbol_table[symbol_count - 1].is_external = 1;
     } else if (strncmp(line, DIRECTIVE_NAMES[3], strlen(DIRECTIVE_NAMES[3])) == 0) {
         line += 7;
         skip_whitespace(&line);
-        add_symbol(line, IC+DC);
+        add_symbol(line, IC + DC);
         IC++;
-        symbol_table[symbol_count-1].is_entry = 1;
-    }
-    else { handle_instruction(line); }
+        symbol_table[symbol_count - 1].is_entry = 1;
+    } else { handle_instruction(line); }
 }
 
 /*
@@ -107,9 +107,9 @@ static void process_line(char* line) {
   2. Validates the label length
   3. Adds the label to the symbol table with its current address (IC)
  */
-static void handle_label(char* line) {
+static void handle_label(char *line) {
     char label[MAX_LABEL_LENGTH + 1];
-    char* colon = strchr(line, ':');
+    char *colon = strchr(line, ':');
     size_t label_length = colon - line;
 
     if (label_length > MAX_LABEL_LENGTH) {
@@ -129,7 +129,7 @@ static void handle_label(char* line) {
    2. If valid, calls encode_instruction to convert it to machine code
    3. Manages any instruction-related errors
  */
-static void handle_instruction(char* line) {
+static void handle_instruction(char *line) {
     OpCode command = find_command(line);
     if (command == -1) {
         fprintf(stderr, "Error: Invalid instruction: %s\n", line);
@@ -150,6 +150,8 @@ static void handle_instruction(char* line) {
 static void handle_directive(char* line) {
     int value;
     char* endptr;
+    int words_encoded;
+    char value_str[20];  // Buffer to hold string representation of value
 
     if (strncmp(line, ".data", 5) == 0) {
         line += 5;
@@ -163,8 +165,11 @@ static void handle_directive(char* line) {
                 return;
             }
             line = endptr;
-/////////////////// encode_diractive - data ///////////////////////////
-///         next memory cell
+            /////////////////// encode_directive - data ///////////////////////////
+            sprintf(value_str, "%d", value);  // Convert int to string
+            words_encoded = encode_directive(".data", value_str);
+            IC += words_encoded;  /* Move to the next memory cell(s) */
+            ///         next memory cell
 
             DC++;
         }
@@ -175,10 +180,11 @@ static void handle_directive(char* line) {
             fprintf(stderr, "Error: String must start with a quote\n");
             return;
         }
-        line++;
+        /////////////////// encode_directive - string ///////////////////////////
+        words_encoded = encode_directive(".string", line);
+        IC += words_encoded;  /* Move to the next memory cell(s) */
+        ///         next memory cell
         while (*line && *line != '"') {
-/////////////////// encode_diractive - string ///////////////////////////
-///         next memory cell
             DC++;
             line++;
         }
@@ -212,7 +218,6 @@ void free_memory(void) {
         memory = NULL;
     }
     memory_size = 0;
-    IC = 100;  // Reset Instruction Counter
-    DC = 0;    // Reset Data Counter
+    IC = 100; // Reset Instruction Counter
+    DC = 0; // Reset Data Counter
 }
-

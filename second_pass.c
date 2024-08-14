@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 extern int IC;
 extern int DC;
@@ -30,26 +31,37 @@ void perform_second_pass(const char* filename) {
     printf("DEBUG: Second pass completed successfully\n");
 }
 
-static void update_symbol_addresses(void)
-{
-    int i;
+static void update_symbol_addresses(void) {
+    int i, j;
     Symbol* symbol;
     char symbol_name[MAX_SYMBOL_LENGTH + 1];
+    MachineWord word;
 
     printf("DEBUG: Updating symbol addresses\n");
-    for (i = 0; i < IC + DC - INITIAL_MEMORY_ADDRESS; i++) {
-        if ((memory[i] & ((1 << ARE_BITS) - 1)) == ARE_RELOCATABLE) {
-            strncpy(symbol_name, (char*)&memory[i], sizeof(MachineWord));
-            symbol_name[sizeof(MachineWord)] = '\0';
+    for (i = INITIAL_MEMORY_ADDRESS; i < IC + DC ; i++) {
+        word = memory[i];
+        if ((word & ((1 << ARE_BITS) - 1)) == ARE_RELOCATABLE) {
+            /* Extract symbol name, stopping at null terminator or non-printable character */
+            for (j = 0; j < sizeof(MachineWord) && j < MAX_SYMBOL_LENGTH; j++) {
+                symbol_name[j] = ((char*)&word)[j];
+                if (symbol_name[j] == '\0' || !isprint((unsigned char)symbol_name[j])) {
+                    break;
+                }
+            }
+            symbol_name[j] = '\0';
+
+            printf("DEBUG: Extracted symbol name: '%s' from word: 0x%04X at address %d\n",
+                   symbol_name, (unsigned int)word, i + INITIAL_MEMORY_ADDRESS);
+
             symbol = get_symbol_by_name(symbol_name);
             if (symbol != NULL) {
                 if (symbol->is_external) {
                     memory[i] = (symbol->address << ARE_BITS) | ARE_EXTERNAL;
-                    printf("DEBUG: Updated external symbol %s at address %d\n", symbol_name, i + INITIAL_MEMORY_ADDRESS);
                 } else {
                     memory[i] = (symbol->address << ARE_BITS) | ARE_RELOCATABLE;
-                    printf("DEBUG: Updated relocatable symbol %s at address %d\n", symbol_name, i + INITIAL_MEMORY_ADDRESS);
                 }
+                printf("DEBUG: Updated symbol %s at address %d with value 0x%04X\n",
+                       symbol_name, i + INITIAL_MEMORY_ADDRESS, (unsigned int)memory[i]);
             } else {
                 fprintf(stderr, "Error: Undefined symbol %s at address %d\n", symbol_name, i + INITIAL_MEMORY_ADDRESS);
             }

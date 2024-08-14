@@ -34,12 +34,11 @@ const OpcodeAddressing opcode_addressing[NUM_OPCODES] = {
         {0,   0}  /* stop - source: null;    dest: null */
 };
 
-/*The function checks if the opcode is valid.
-  It selects the allowed addressing methods for either the source or destination operand.
-  It checks if the given method is allowed by using a bitwise AND operation.
- */
 int validate_operand_addressing(OpCode opcode, int is_source, int method) {
     unsigned char allowed;
+
+    printf("DEBUG: Validating operand addressing - Opcode: %s, Is source: %d, Method: %d\n",
+           OPCODE_NAMES[opcode], is_source, method);
 
     if (opcode < 0 || opcode >= NUM_OPCODES) {
         return 0;  /* Invalid opcode */
@@ -51,69 +50,55 @@ int validate_operand_addressing(OpCode opcode, int is_source, int method) {
         allowed = opcode_addressing[opcode].dest_allowed;
     }
 
+    printf("DEBUG: Operand addressing validation result: %d\n", (allowed & (1 << method)) != 0);
     return (allowed & (1 << method)) != 0;
 }
 
-
-/* find_command purpose is identify the opcode it gets and -
-   1. skip whitespace
-   2. skip labels (if the line starts with a label)
-   3. It checks the no. of operands and locate it to the right group of operands and looking for a match(opcode).
-   If it can't find a match, it'll return -1.
- */
 OpCode find_command(const char* line) {
     int j;
     int length;
     char* current = (char*)line;  /* Cast to non-const for skip_whitespace */
 
-    skip_whitespace(&current);
+    printf("DEBUG: Finding command in line: '%s'\n", line);
 
-    // if (is_label(current)) {
-    //     char* colon = strchr(current, ':');
-    //     if (colon) {
-    //         current = colon + 1;
-    //         skip_whitespace(&current);
-    //     }
-    // }
+    skip_whitespace(&current);
 
     for (j = 0; j < TWO_OPERAND_COUNT; j++) {
         length = strlen(two_operand_opcodes[j]);
         if (strncmp(current, two_operand_opcodes[j], length) == 0 &&
             (current[length] == '\0' || isspace((unsigned char)current[length]))) {
+            printf("DEBUG: Found opcode: %d\n", j);
             return (OpCode)j;
-            }
+        }
     }
 
     for (j = 0; j < ONE_OPERAND_COUNT; j++) {
         length = strlen(one_operand_opcodes[j]);
         if (strncmp(current, one_operand_opcodes[j], length) == 0 &&
             (current[length] == '\0' || isspace((unsigned char)current[length]))) {
+            printf("DEBUG: Found opcode: %d\n", j + TWO_OPERAND_COUNT);
             return (OpCode)(j + TWO_OPERAND_COUNT);
-            }
+        }
     }
 
     for (j = 0; j < ZERO_OPERAND_COUNT; j++) {
         length = strlen(zero_operand_opcodes[j]);
         if (strncmp(current, zero_operand_opcodes[j], length) == 0 &&
             (current[length] == '\0' || isspace((unsigned char)current[length]))) {
+            printf("DEBUG: Found opcode: %d\n", j + TWO_OPERAND_COUNT + ONE_OPERAND_COUNT);
             return (OpCode)(j + TWO_OPERAND_COUNT + ONE_OPERAND_COUNT);
-            }
+        }
     }
 
+    printf("DEBUG: Invalid opcode\n");
     return (OpCode)-1;  /* Invalid opcode */
 }
-
-
-/* is_label function checks if part of the string is label, and if it's a correct label:
-   1. It checks if the first charachter is an alpabetic letter using isalpha function.
-   2. it checks that all subsequent characters are either alphabetic letters or numbers using isalnum() func.
-   3. It checks if the label ends with ':'.
-   4. Its validating that the maximum length of the label is 31 charachters.
- */
 
 int is_label(const char* str) {
     int i = 0;
     int label_length = 0;
+
+    printf("DEBUG: Checking if '%s' is a label\n", str);
 
     while (isspace((unsigned char)str[i])) i++;
 
@@ -126,17 +111,15 @@ int is_label(const char* str) {
         if (label_length > MAX_LABEL_LENGTH) return 0;
     }
 
+    printf("DEBUG: Label check result: %d\n", (str[i] == ':' && label_length > 0));
     return (str[i] == ':' && label_length > 0);
 }
 
-/* This function checks if a given string is a valid label when used as an operand in an instruction.
- * 1. It checks if the first char is a letter.
- * 2. It checks if each character of the label if it's alphanumeric
- * 3. Counts the length of the label and then checks if it's length is less or equal to 31.
- */
 int is_valid_label_operand(const char* str) {
     int i = 0;
     int label_length = 0;
+
+    printf("DEBUG: Checking if '%s' is a valid label operand\n", str);
 
     if (!isalpha((int)str[i])) return 0;
 
@@ -147,12 +130,15 @@ int is_valid_label_operand(const char* str) {
         if (label_length > MAX_LABEL_LENGTH) return 0;
     }
 
+    printf("DEBUG: Valid label operand check result: %d\n", (label_length > 0));
     return (label_length > 0);
 }
 
-/* The function checks if the operand is a register or an immediate value (#number) */
 int validate_operand(const char* op, OpCode opcode, int is_source) {
     AddressingMethod method;
+
+    printf("DEBUG: Validating operand: '%s', Opcode: %s, Is source: %d\n",
+           op, OPCODE_NAMES[opcode], is_source);
 
     if (op == NULL || op[0] == '\0') {
         return opcode_addressing[opcode].source_allowed == 0 && is_source;
@@ -160,36 +146,34 @@ int validate_operand(const char* op, OpCode opcode, int is_source) {
 
     method = get_addressing_method(op);
     if (method == -1) {
+        printf("DEBUG: Invalid addressing method\n");
         return 0;
     }
 
-
+    printf("DEBUG: Operand validation result: %d\n", validate_operand_addressing(opcode, is_source, method));
     return validate_operand_addressing(opcode, is_source, method);
 }
 
-/* This function counts the number of operands in a line of assembly code.*/
 int count_operands(const char* line) {
+    int count = 0;
+    printf("DEBUG: Counting operands in line: '%s'\n", line);
+
     if (strchr(line, ',') != NULL) {
-        return 2;
+        count = 2;
     } else if (strchr(line, ' ') != NULL) {
-        return 1;
-    } else {
-        return 0;
+        count = 1;
     }
+
+    printf("DEBUG: Operand count: %d\n", count);
+    return count;
 }
 
-/* The function extracts and validates operands from a line of assembly code.
-   1. It assumes the line has no labels and starts with the command.
-   2. It looks for the first space in the line, which marks the end of the command and the beginning of the operands.
-   3. If no space is found, the function returns 0, indicating no operands.
-   4. It then looks for a comma, which would separate two operands.
-   5. The function uses validate_operand to check the validity of each extracted operand.
-*/
 void extract_operands(const char* line, char* opcode, char* first_operand, char* second_operand) {
     const char* start = line;
     const char* end;
     size_t length;
-    int operand_count = 0;
+
+    printf("DEBUG: Extracting operands from line: '%s'\n", line);
 
     /* Initialize output parameters */
     opcode[0] = first_operand[0] = second_operand[0] = '\0';
@@ -205,7 +189,8 @@ void extract_operands(const char* line, char* opcode, char* first_operand, char*
         strncpy(opcode, start, length);
         opcode[length] = '\0';
     } else {
-        return ; /* No opcode found */
+        printf("DEBUG: No opcode found\n");
+        return; /* No opcode found */
     }
 
     /* Move to first operand */
@@ -220,7 +205,6 @@ void extract_operands(const char* line, char* opcode, char* first_operand, char*
         strncpy(first_operand, start, length);
         first_operand[length] = '\0';
 
-
         /* Move to second operand */
         start = end;
         while (*start && (*start == ',' || isspace((unsigned char)*start))) start++;
@@ -232,37 +216,34 @@ void extract_operands(const char* line, char* opcode, char* first_operand, char*
             length = end - start;
             strncpy(second_operand, start, length);
             second_operand[length] = '\0';
-
         }
     }
 
+    printf("DEBUG: Extracted - Opcode: '%s', First operand: '%s', Second operand: '%s'\n",
+           opcode, first_operand, second_operand);
 }
 
 int validate_instruction(const char* line) {
+    char opcode[MAX_OPERANDS] = {0};
     char first_operand[MAX_OPERANDS] = {0};
     char second_operand[MAX_OPERANDS] = {0};
-    OpCode opcode;
+    OpCode opcode_value;
     int operand_count;
     int expected_count;
 
     printf("DEBUG: Validating instruction: '%s'\n", line);
 
-    opcode = find_command(line);
-    printf("DEBUG: Found opcode: %s\n", OPCODE_NAMES[opcode]);
-
-    if (opcode == (OpCode)-1) {
+    opcode_value = find_command(line);
+    if (opcode_value == (OpCode)-1) {
         printf("DEBUG: Invalid opcode\n");
         return 0;
     }
 
-    extract_operands(line, NULL, first_operand, second_operand);
+    extract_operands(line, opcode, first_operand, second_operand);
+    operand_count = (*first_operand != '\0') + (*second_operand != '\0');
+
     printf("DEBUG: Extracted operands - First: '%s', Second: '%s', Count: %d\n",
            first_operand, second_operand, operand_count);
-
-    if (operand_count == -1) {
-        printf("DEBUG: Failed to extract operands\n");
-        return 0;
-    }
 
     expected_count = count_operands(line);
     printf("DEBUG: Expected operand count: %d, Actual count: %d\n", expected_count, operand_count);
@@ -272,8 +253,8 @@ int validate_instruction(const char* line) {
         return 0;
     }
 
-    if (!validate_operand(first_operand, opcode, 1) ||
-    (operand_count == 2 && !validate_operand(second_operand, opcode, 0))) {
+    if (!validate_operand(first_operand, opcode_value, 1) ||
+        (operand_count == 2 && !validate_operand(second_operand, opcode_value, 0))) {
         printf("DEBUG: Invalid operand(s)\n");
         return 0;
     }

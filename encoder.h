@@ -33,6 +33,7 @@ typedef enum {
 
 /* Function to encode a single instruction into machine code */
 void encode_instruction(const char* instruction, OpCode command_name);
+int encode_directive(const char* directive, const char* operands);
 
 /* Function to determine the addressing method of an operand */
 AddressingMethod get_addressing_method(const char* operand);

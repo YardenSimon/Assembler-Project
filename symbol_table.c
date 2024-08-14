@@ -26,12 +26,12 @@ void init_symbol_table(void) {
 void add_symbol(const char* name, int address) {
     Symbol* temp;
 
-    printf("DEBUG: Adding symbol: %s with address: %d\n", name, address);
 
     if (symbol_exists(name)) {
         printf("DEBUG: Symbol %s already exists. Not adding again.\n", name);
         return;
     }
+    printf("DEBUG: Adding symbol: %s with address: %d\n", name, address);
 
     if (symbol_count >= symbol_capacity) {
         symbol_capacity *= 2;
