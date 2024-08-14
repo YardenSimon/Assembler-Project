@@ -22,6 +22,15 @@ static void handle_instruction(char* line);
 static void handle_directive(char* line);
 static int add_to_memory(MachineWord word);
 
+const char* DIRECTIVE_NAMES[NUM_DIRECTIVES] = {
+    ".data", ".string", ".entry", ".extern"
+};
+
+const char* OPCODE_NAMES[NUM_OPCODES] = {
+    "mov", "cmp", "add", "sub", "lea", "clr", "not", "inc",
+    "dec", "jmp", "bne", "red", "prn", "jsr", "rts", "stop"
+};
+
 /* This function initiates the first pass of the assembler. It:
   1. Opens the input file containing assembly code
   2. Initializes the memory array to store the program
@@ -74,6 +83,7 @@ static void process_line(char* line) {
     if (strncmp(line, DIRECTIVE_NAMES[0], strlen(DIRECTIVE_NAMES[0])) == 0 ||
     strncmp(line, DIRECTIVE_NAMES[1], strlen(DIRECTIVE_NAMES[1])) == 0) {
         handle_directive(line);
+
     } else if (strncmp(line, DIRECTIVE_NAMES[2], strlen(DIRECTIVE_NAMES[2])) == 0) {
         line += 7;
         skip_whitespace(&line);
@@ -127,7 +137,7 @@ static void handle_instruction(char* line) {
     }
 
     /* The actual encoding is done by encode_instruction in encoder.c */
-    encode_instruction(line);
+    encode_instruction(line, command);
     /* IC is incremented in encode_instruction */
 }
 
@@ -153,6 +163,8 @@ static void handle_directive(char* line) {
                 return;
             }
             line = endptr;
+/////////////////// encode_diractive - data ///////////////////////////
+///         next memory cell
 
             DC++;
         }
@@ -165,6 +177,8 @@ static void handle_directive(char* line) {
         }
         line++;
         while (*line && *line != '"') {
+/////////////////// encode_diractive - string ///////////////////////////
+///         next memory cell
             DC++;
             line++;
         }
@@ -179,18 +193,18 @@ static void handle_directive(char* line) {
    3. Adds the new word to the memory array
    4. Handles memory allocation failures
  */
-static int add_to_memory(MachineWord word) {
-    int current_address = IC + DC - 100;
-    if (current_address >= memory_size) {
-        MachineWord* new_memory;
-        memory_size *= 2;
-        new_memory = (MachineWord*)safe_malloc(memory_size * sizeof(MachineWord*));
-        memset(memory, 0, memory_size * sizeof(MachineWord*));
-        memory = new_memory;
-    }
-    memory[current_address] = word;
-    return 0;
-}
+// static int add_to_memory(MachineWord word) {
+//     int current_address = IC + DC - 100;
+//     if (current_address >= memory_size) {
+//         MachineWord* new_memory;
+//         memory_size *= 2;
+//         new_memory = (MachineWord*)safe_malloc(memory_size * sizeof(MachineWord*));
+//         memset(memory, 0, memory_size * sizeof(MachineWord*));
+//         memory = new_memory;
+//     }
+//     memory[current_address] = word;
+//     return 0;
+// }
 
 void free_memory(void) {
     if (memory != NULL) {

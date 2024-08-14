@@ -28,13 +28,15 @@ const OpcodeInfo opcodes[NUM_OPCODES] = {
     {"prn", prn}, {"jsr", jsr}, {"rts", rts}, {"stop", stop}
 };
 
+
+
 /* Function prototypes for helper functions */
 static OpCode get_opcode_value(const char* opcode_name);
 static void encode_operand(AddressingMethod method, const char* operand, int is_source);
 static void print_binary(MachineWord word);
 
 /* Encode a single instruction into machine code */
-void encode_instruction(const char* instruction) {
+void encode_instruction(const char* instruction, OpCode command_name) {
     char opcode_name[MAX_OPERAND_LENGTH];
     char source[MAX_OPERAND_LENGTH] = {0}, destination[MAX_OPERAND_LENGTH] = {0};
     OpCode opcode_value;
@@ -45,16 +47,19 @@ void encode_instruction(const char* instruction) {
     printf("DEBUG: Encoding instruction: %s\n", instruction);
 
     /* Parse instruction into opcode and operands */
-    // operand_count = extract_operands(instruction, opcode_name, source, destination);
+    extract_operands(instruction, opcode_name, source, destination);
 
-    printf("DEBUG: Parsed - Opcode: %s, Source: %s, Destination: %s\n", opcode_name, source, destination);
+    printf("DEBUG: Parsed - Opcode: %d, Source: %s, Destination: %s\n", command_name, source, destination);
 
-    opcode_value = get_opcode_value(opcode_name);
+    opcode_value = command_name;
     src_method = get_addressing_method(source);
     dst_method = get_addressing_method(destination);
 
     printf("DEBUG: Opcode value: %d, Source method: %d, Destination method: %d\n", opcode_value, src_method, dst_method);
-
+    // if (!validate_instruction(instruction)) {
+    //     fprintf(stderr, "Error: Invalid instruction\n");
+    //     return;
+    // }
     /* Encode first word of instruction */
     encoded_word |= ((opcode_value & ((1 << OPCODE_BITS) - 1)) << (WORD_SIZE - OPCODE_BITS));
     encoded_word |= ((src_method & ((1 << SOURCE_ADDR_BITS) - 1)) << (WORD_SIZE - OPCODE_BITS - SOURCE_ADDR_BITS));
@@ -84,19 +89,6 @@ void encode_instruction(const char* instruction) {
     }
 
     printf("DEBUG: Finished encoding instruction. New IC: %d\n", IC);
-}
-
-/* Get the numeric value of an opcode */
-static OpCode get_opcode_value(const char* opcode_name) {
-    int i;
-    for (i = 0; i < NUM_OPCODES; i++) {
-        if (strcmp(opcodes[i].name, opcode_name) == 0) {
-            printf("DEBUG: Found opcode %s with value %d\n", opcode_name, opcodes[i].value);
-            return opcodes[i].value;
-        }
-    }
-    printf("DEBUG: Invalid opcode: %s\n", opcode_name);
-    return -1; /* Invalid opcode */
 }
 
 /* Determine the addressing method of an operand */

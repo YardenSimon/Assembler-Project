@@ -34,15 +34,6 @@ const OpcodeAddressing opcode_addressing[NUM_OPCODES] = {
         {0,   0}  /* stop - source: null;    dest: null */
 };
 
-const char* OPCODE_NAMES[NUM_OPCODES] = {
-    "mov", "cmp", "add", "sub", "lea", "clr", "not", "inc",
-    "dec", "jmp", "bne", "red", "prn", "jsr", "rts", "stop"
-};
-
-const char* DIRECTIVE_NAMES[NUM_DIRECTIVES] = {
-    ".data", ".string", ".entry", ".extern"
-};
-
 /*The function checks if the opcode is valid.
   It selects the allowed addressing methods for either the source or destination operand.
   It checks if the given method is allowed by using a bitwise AND operation.
@@ -77,13 +68,13 @@ OpCode find_command(const char* line) {
 
     skip_whitespace(&current);
 
-    if (is_label(current)) {
-        char* colon = strchr(current, ':');
-        if (colon) {
-            current = colon + 1;
-            skip_whitespace(&current);
-        }
-    }
+    // if (is_label(current)) {
+    //     char* colon = strchr(current, ':');
+    //     if (colon) {
+    //         current = colon + 1;
+    //         skip_whitespace(&current);
+    //     }
+    // }
 
     for (j = 0; j < TWO_OPERAND_COUNT; j++) {
         length = strlen(two_operand_opcodes[j]);
@@ -194,7 +185,7 @@ int count_operands(const char* line) {
    4. It then looks for a comma, which would separate two operands.
    5. The function uses validate_operand to check the validity of each extracted operand.
 */
-int extract_operands(const char* line, char* opcode, char* first_operand, char* second_operand) {
+void extract_operands(const char* line, char* opcode, char* first_operand, char* second_operand) {
     const char* start = line;
     const char* end;
     size_t length;
@@ -210,11 +201,11 @@ int extract_operands(const char* line, char* opcode, char* first_operand, char* 
     end = start;
     while (*end && !isspace((unsigned char)*end)) end++;
     length = end - start;
-    if (length > 0) {
+    if (length > 0 && opcode != NULL) {
         strncpy(opcode, start, length);
         opcode[length] = '\0';
     } else {
-        return 0; /* No opcode found */
+        return ; /* No opcode found */
     }
 
     /* Move to first operand */
@@ -228,7 +219,7 @@ int extract_operands(const char* line, char* opcode, char* first_operand, char* 
         length = end - start;
         strncpy(first_operand, start, length);
         first_operand[length] = '\0';
-        operand_count++;
+
 
         /* Move to second operand */
         start = end;
@@ -241,11 +232,10 @@ int extract_operands(const char* line, char* opcode, char* first_operand, char* 
             length = end - start;
             strncpy(second_operand, start, length);
             second_operand[length] = '\0';
-            operand_count++;
+
         }
     }
 
-    return operand_count;
 }
 
 int validate_instruction(const char* line) {
@@ -265,7 +255,7 @@ int validate_instruction(const char* line) {
         return 0;
     }
 
-    operand_count = extract_operands(line, NULL, first_operand, second_operand);
+    extract_operands(line, NULL, first_operand, second_operand);
     printf("DEBUG: Extracted operands - First: '%s', Second: '%s', Count: %d\n",
            first_operand, second_operand, operand_count);
 
@@ -283,10 +273,10 @@ int validate_instruction(const char* line) {
     }
 
     if (!validate_operand(first_operand, opcode, 1) ||
-        (operand_count == 2 && !validate_operand(second_operand, opcode, 0))) {
+    (operand_count == 2 && !validate_operand(second_operand, opcode, 0))) {
         printf("DEBUG: Invalid operand(s)\n");
         return 0;
-        }
+    }
 
     printf("DEBUG: Instruction validated successfully\n");
     return 1;
