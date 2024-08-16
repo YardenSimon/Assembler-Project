@@ -21,6 +21,8 @@ BaseFilename get_base_filename(const char* filename);
 /* Function for safe memory allocation */
 void* safe_malloc(size_t size);
 
+void* safe_realloc(void* ptr, size_t size);
+
 /* Function for safe file opening */
 FILE* safe_fopen(const char* filename, const char* mode);
 

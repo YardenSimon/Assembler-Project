@@ -9,6 +9,10 @@
 #include "second_pass.h"
 #include "symbol_table.h"
 #include "globals.h"
+#include "encoder.h"
+
+void print_memory_after_first_pass(void);
+
 
 /* Function to process a single input file */
 static void process_file(const char *filename) {
@@ -31,6 +35,9 @@ static void process_file(const char *filename) {
 
     /* Perform first pass on .am file */
     perform_first_pass(am_filename);
+
+    print_memory_after_first_pass();
+
 
     print_symbol_table();
 
@@ -62,3 +69,20 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
+#include <stdio.h>
+
+void print_memory_after_first_pass() {
+    int i, j;
+
+    for (i = 0; i < memory_size; i++) {
+        /* Only print if the memory location is non-zero, to avoid printing uninitialized memory slots */
+        if (memory[i] != 0) {
+            /* Print the address and the encoded word in binary */
+            printf("Address: %d, Encoded Word: ", i + 100);  // Assuming address starts at 100
+            for (j = 14; j >= 0; j--) {
+                printf("%d", (memory[i] >> j) & 1);
+            }
+            printf("\n");
+        }
+    }
+}

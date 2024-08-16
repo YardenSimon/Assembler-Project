@@ -24,7 +24,6 @@ static void handle_instruction(char *line);
 
 static void handle_directive(char *line);
 
-static int add_to_memory(MachineWord word);
 
 const char *DIRECTIVE_NAMES[NUM_DIRECTIVES] = {
     ".data", ".string", ".entry", ".extern"
@@ -90,14 +89,12 @@ static void process_line(char *line) {
         line += 7;
         skip_whitespace(&line);
         add_symbol(line, IC + DC);
-        IC++;
-        symbol_table[symbol_count - 1].is_external = 1;
+        symbol_table[symbol_count - 1].is_entry = 1;
     } else if (strncmp(line, DIRECTIVE_NAMES[3], strlen(DIRECTIVE_NAMES[3])) == 0) {
         line += 7;
         skip_whitespace(&line);
         add_symbol(line, IC + DC);
-        IC++;
-        symbol_table[symbol_count - 1].is_entry = 1;
+        symbol_table[symbol_count - 1].is_external = 1;
     } else { handle_instruction(line); }
 }
 
@@ -167,11 +164,10 @@ static void handle_directive(char* line) {
             line = endptr;
             /////////////////// encode_directive - data ///////////////////////////
             sprintf(value_str, "%d", value);  // Convert int to string
-            words_encoded = encode_directive(".data", value_str);
-            IC += words_encoded;  /* Move to the next memory cell(s) */
+            encode_directive(".data", value_str);
+            IC++;
             ///         next memory cell
 
-            DC++;
         }
     } else if (strncmp(line, ".string", 7) == 0) {
         line += 7;
@@ -181,36 +177,17 @@ static void handle_directive(char* line) {
             return;
         }
         /////////////////// encode_directive - string ///////////////////////////
-        words_encoded = encode_directive(".string", line);
-        IC += words_encoded;  /* Move to the next memory cell(s) */
+        encode_directive(".string", line);
+        IC++;
+
         ///         next memory cell
         while (*line && *line != '"') {
             DC++;
             line++;
         }
         /* Add null terminator */
-        DC++;
     }
 }
-
-/* This function manages memory allocation:
-   1. Calculates the current memory address
-   2. Expands memory if necessary using realloc
-   3. Adds the new word to the memory array
-   4. Handles memory allocation failures
- */
-// static int add_to_memory(MachineWord word) {
-//     int current_address = IC + DC - 100;
-//     if (current_address >= memory_size) {
-//         MachineWord* new_memory;
-//         memory_size *= 2;
-//         new_memory = (MachineWord*)safe_malloc(memory_size * sizeof(MachineWord*));
-//         memset(memory, 0, memory_size * sizeof(MachineWord*));
-//         memory = new_memory;
-//     }
-//     memory[current_address] = word;
-//     return 0;
-// }
 
 void free_memory(void) {
     if (memory != NULL) {

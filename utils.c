@@ -1,7 +1,6 @@
 /* utils.c */
 
 #include "utils.h"
-#include "globals.h"
 #include <ctype.h>
 #include <string.h>
 
@@ -44,6 +43,15 @@ void* safe_malloc(size_t size) {
         exit(EXIT_FAILURE);
     }
     return ptr;
+}
+
+void* safe_realloc(void* ptr, size_t size) {
+    void* new_ptr = realloc(ptr, size);
+    if (new_ptr == NULL) {
+        fprintf(stderr, "Error: Memory reallocation failed\n");
+        exit(EXIT_FAILURE);
+    }
+    return new_ptr;
 }
 
 FILE* safe_fopen(const char* filename, const char* mode) {

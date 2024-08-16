@@ -1,5 +1,3 @@
-/* second_pass.c */
-
 #include "globals.h"
 #include "utils.h"
 #include "second_pass.h"
@@ -21,6 +19,8 @@ static void write_externals_file(const char* filename);
 static void write_entries_file(const char* filename);
 static char* convert_to_octal(unsigned short num);
 static char* get_filename_without_extension(const char* filename);
+//delete later
+static void print_binary(MachineWord word) ;
 
 void perform_second_pass(const char* filename) {
     printf("DEBUG: Starting second pass for file: %s\n", filename);
@@ -31,41 +31,51 @@ void perform_second_pass(const char* filename) {
     printf("DEBUG: Second pass completed successfully\n");
 }
 
+/* In second_pass.c */
+
 static void update_symbol_addresses(void) {
-    int i, j;
+    int memory_index;
     Symbol* symbol;
-    char symbol_name[MAX_SYMBOL_LENGTH + 1];
     MachineWord word;
+    char symbol_name[MAX_SYMBOL_LENGTH + 1];
 
     printf("DEBUG: Updating symbol addresses\n");
-    for (i = INITIAL_MEMORY_ADDRESS; i < IC + DC ; i++) {
-        word = memory[i];
-        if ((word & ((1 << ARE_BITS) - 1)) == ARE_RELOCATABLE) {
-            /* Extract symbol name, stopping at null terminator or non-printable character */
-            for (j = 0; j < sizeof(MachineWord) && j < MAX_SYMBOL_LENGTH; j++) {
-                symbol_name[j] = ((char*)&word)[j];
-                if (symbol_name[j] == '\0' || !isprint((unsigned char)symbol_name[j])) {
-                    break;
-                }
-            }
-            symbol_name[j] = '\0';
 
-            printf("DEBUG: Extracted symbol name: '%s' from word: 0x%04X at address %d\n",
-                   symbol_name, (unsigned int)word, i + INITIAL_MEMORY_ADDRESS);
+    for (memory_index = 0; memory_index < IC + DC - INITIAL_MEMORY_ADDRESS; memory_index++) {
+        word = memory[memory_index];
+
+        /* Check if the word is a string (assuming it's stored as characters) */
+        if (isprint((unsigned char)((char*)&word)[0])) {
+            strncpy(symbol_name, (char*)&word, sizeof(MachineWord));
+            symbol_name[sizeof(MachineWord)] = '\0'; /* Ensure null-termination */
 
             symbol = get_symbol_by_name(symbol_name);
             if (symbol != NULL) {
+                MachineWord new_word;
                 if (symbol->is_external) {
-                    memory[i] = (symbol->address << ARE_BITS) | ARE_EXTERNAL;
+                    new_word = ARE_EXTERNAL; /* Only set the E bit for externals */
                 } else {
-                    memory[i] = (symbol->address << ARE_BITS) | ARE_RELOCATABLE;
+                    /* Encode address in bits 3-14 and set the R bit */
+                    new_word = ((symbol->address & 0xFFF) << 2) | ARE_RELOCATABLE;
                 }
-                printf("DEBUG: Updated symbol %s at address %d with value 0x%04X\n",
-                       symbol_name, i + INITIAL_MEMORY_ADDRESS, (unsigned int)memory[i]);
+
+                printf("DEBUG: Updated memory[%d] for symbol %s\n", memory_index, symbol_name);
+                printf("Old value: %015o\n", word);
+                printf("New value: %015o\n", new_word);
+
+                memory[memory_index] = new_word;
             } else {
-                fprintf(stderr, "Error: Undefined symbol %s at address %d\n", symbol_name, i + INITIAL_MEMORY_ADDRESS);
+                printf("DEBUG: Symbol %s not found in table\n", symbol_name);
             }
         }
+    }
+}
+
+/*DELETE LATER*/
+static void print_binary(MachineWord word) {
+    int i;
+    for (i = WORD_SIZE - 1; i >= 0; i--) {
+        printf("%d", (word >> i) & 1);
     }
 }
 
@@ -88,7 +98,7 @@ static void write_object_file(const char* filename)
 
     fprintf(ob_file, "%d %d\n", IC - INITIAL_MEMORY_ADDRESS, DC);
 
-    for (i = 0; i < IC + DC - INITIAL_MEMORY_ADDRESS; i++) {
+    for (i = 0; i < (IC + DC - INITIAL_MEMORY_ADDRESS); i++) {
         fprintf(ob_file, "%04d %s\n", i + INITIAL_MEMORY_ADDRESS, convert_to_octal(memory[i]));
     }
 

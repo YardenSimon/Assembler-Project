@@ -10,6 +10,9 @@
 /* MachineWord represents a 15-bit word in our assembly language.
  * We use a 16-bit unsigned short, but only utilize the lower 15 bits. */
 typedef unsigned short MachineWord;
+extern int memory_size;
+extern MachineWord *memory;
+
 
 /* AddressingMethod enum represents the five addressing methods in our assembly language:
  * 0 - None: No operand
@@ -18,11 +21,11 @@ typedef unsigned short MachineWord;
  * 3 - Index: Addressing using a base address and an index register, e.g., *r3
  * 4 - Register: Direct register addressing, e.g., r7 */
 typedef enum {
-    ADDR_NONE,
-    ADDR_IMMEDIATE,
-    ADDR_DIRECT,
-    ADDR_INDEX,
-    ADDR_REGISTER
+ ADDR_NONE,
+ ADDR_IMMEDIATE,
+ ADDR_DIRECT,
+ ADDR_INDEX,
+ ADDR_REGISTER
 } AddressingMethod;
 
 /* AREType enum represents the ARE (Absolute, Relocatable, External) bits:
@@ -33,7 +36,7 @@ typedef enum {
 
 /* Function to encode a single instruction into machine code */
 void encode_instruction(const char* instruction, OpCode command_name);
-int encode_directive(const char* directive, const char* operands);
+void encode_directive(const char* directive, const char* operands);
 
 /* Function to determine the addressing method of an operand */
 AddressingMethod get_addressing_method(const char* operand);
