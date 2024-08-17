@@ -3,6 +3,8 @@
 #include "second_pass.h"
 #include "symbol_table.h"
 #include "encoder.h"
+#include "entry_extern.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -34,42 +36,49 @@ void perform_second_pass(const char* filename) {
 /* In second_pass.c */
 
 static void update_symbol_addresses(void) {
-    int memory_index;
+    int i;
     Symbol* symbol;
     MachineWord word;
-    char symbol_name[MAX_SYMBOL_LENGTH + 1];
+    int string_index;
 
     printf("DEBUG: Updating symbol addresses\n");
 
-    for (memory_index = 0; memory_index < IC + DC - INITIAL_MEMORY_ADDRESS; memory_index++) {
-        word = memory[memory_index];
+    for (i = 0; i < IC + DC - INITIAL_MEMORY_ADDRESS; i++) {
+        word = memory[i];
 
-        /* Check if the word is a string (assuming it's stored as characters) */
-        if (isprint((unsigned char)((char*)&word)[0])) {
-            strncpy(symbol_name, (char*)&word, sizeof(MachineWord));
-            symbol_name[sizeof(MachineWord)] = '\0'; /* Ensure null-termination */
-
-            symbol = get_symbol_by_name(symbol_name);
-            if (symbol != NULL) {
-                MachineWord new_word;
-                if (symbol->is_external) {
-                    new_word = ARE_EXTERNAL; /* Only set the E bit for externals */
+        if ((word & 3) == ARE_RELOCATABLE) {
+            string_index = word >> 2;
+            if (string_index < string_count) {
+                symbol = get_symbol_by_name(string_table[string_index]);
+                if (symbol != NULL) { /*SHIFT 2 LEFT*/
+                    MachineWord new_word = ((symbol->address & 0xFFF) << 3) | ARE_RELOCATABLE;
+                    printf("DEBUG: Updated memory[%d] for symbol %s\n", i, string_table[string_index]);
+                    printf("Old value: %d\n", word);
+                    printf("New value: %d\n", new_word);
+                    memory[i] = new_word;
                 } else {
-                    /* Encode address in bits 3-14 and set the R bit */
-                    new_word = ((symbol->address & 0xFFF) << 2) | ARE_RELOCATABLE;
+                    /* If symbol is not found, it might be an external symbol */
+                    MachineWord new_word = ARE_EXTERNAL;
+                    printf("DEBUG: Symbol %s not found in table, assuming external\n", string_table[string_index]);
+                    printf("Old value: %d\n", word);
+                    printf("New value: %d\n", new_word);
+                    memory[i] = new_word;
                 }
-
-                printf("DEBUG: Updated memory[%d] for symbol %s\n", memory_index, symbol_name);
-                printf("Old value: %015o\n", word);
-                printf("New value: %015o\n", new_word);
-
-                memory[memory_index] = new_word;
             } else {
-                printf("DEBUG: Symbol %s not found in table\n", symbol_name);
+                fprintf(stderr, "Error: Invalid string table index\n");
             }
         }
     }
+    for (i = 0; i < entry_count; i++) {
+        symbol = get_symbol_by_name(entries[i].name);
+        if (symbol != NULL) {
+            set_entry_address(entries[i].name, symbol->address);
+        } else {
+            fprintf(stderr, "Error: Entry symbol '%s' not found in symbol table\n", entries[i].name);
+        }
+    }
 }
+
 
 /*DELETE LATER*/
 static void print_binary(MachineWord word) {
@@ -106,32 +115,33 @@ static void write_object_file(const char* filename)
     printf("DEBUG: Object file '%s' created successfully\n", ob_filename);
 }
 
-static void write_externals_file(const char* filename)
-{
+static void write_externals_file(const char* filename) {
     char ext_filename[MAX_FILENAME_LENGTH];
     FILE* ext_file = NULL;
-    int i;
-    Symbol* symbol;
-    int external_count = 0;
+    int i, j;
+    MachineWord word;
+    char symbol_name[MAX_SYMBOL_LENGTH + 1];
 
-    /* First, count the number of external symbols */
-    for (i = 0; i < get_symbol_count(); i++) {
-        symbol = get_symbol_by_index(i);
-        if (symbol->is_external) {
-            external_count++;
-        }
-    }
-
-    /* Only create the file if there are external symbols */
-    if (external_count > 0) {
-        sprintf(ext_filename, "%s%s", filename, EXTERNALS_FILE_EXT);
+    if (extern_count > 0) {
+        snprintf(ext_filename, sizeof(ext_filename), "%s%s", filename, EXTERNALS_FILE_EXT);
         ext_file = safe_fopen(ext_filename, "w");
 
-        for (i = 0; i < get_symbol_count(); i++) {
-            symbol = get_symbol_by_index(i);
-            if (symbol->is_external) {
-                fprintf(ext_file, "%s %04d\n", symbol->name, symbol->address);
-                printf("DEBUG: Wrote external symbol %s at address %04d\n", symbol->name, symbol->address);
+        for (i = 0; i < extern_count; i++) {
+            /* Search for uses of this external symbol in the code */
+            for (j = 0; j < IC + DC - INITIAL_MEMORY_ADDRESS; j++) {
+                word = memory[j];
+                /* Check if the word is a symbol (assuming it's stored as characters) */
+                if (isprint((unsigned char)((char*)&word)[0])) {
+                    strncpy(symbol_name, (char*)&word, sizeof(MachineWord));
+                    symbol_name[sizeof(MachineWord)] = '\0'; /* Ensure null-termination */
+
+                    if (strcmp(symbol_name, externs[i].name) == 0) {
+                        /* Found a use of the external symbol */
+                        fprintf(ext_file, "%s %04d\n", externs[i].name, j + INITIAL_MEMORY_ADDRESS);
+                        printf("DEBUG: External symbol %s used at address %04d\n",
+                               externs[i].name, j + INITIAL_MEMORY_ADDRESS);
+                    }
+                }
             }
         }
 
@@ -142,32 +152,21 @@ static void write_externals_file(const char* filename)
     }
 }
 
-static void write_entries_file(const char* filename)
-{
+static void write_entries_file(const char* filename) {
     char ent_filename[MAX_FILENAME_LENGTH];
     FILE* ent_file = NULL;
     int i;
-    Symbol* symbol;
-    int entry_count = 0;
 
-    /* First, count the number of entry symbols */
-    for (i = 0; i < get_symbol_count(); i++) {
-        symbol = get_symbol_by_index(i);
-        if (symbol->is_entry) {
-            entry_count++;
-        }
-    }
-
-    /* Only create the file if there are entry symbols */
     if (entry_count > 0) {
-        sprintf(ent_filename, "%s%s", filename, ENTRIES_FILE_EXT);
+        snprintf(ent_filename, sizeof(ent_filename), "%s%s", filename, ENTRIES_FILE_EXT);
         ent_file = safe_fopen(ent_filename, "w");
 
-        for (i = 0; i < get_symbol_count(); i++) {
-            symbol = get_symbol_by_index(i);
-            if (symbol->is_entry) {
-                fprintf(ent_file, "%s %04d\n", symbol->name, symbol->address);
-                printf("DEBUG: Wrote entry symbol %s at address %04d\n", symbol->name, symbol->address);
+        for (i = 0; i < entry_count; i++) {
+            if (entries[i].address != -1) {
+                fprintf(ent_file, "%s %04d\n", entries[i].name, entries[i].address);
+                printf("DEBUG: Wrote entry symbol %s at address %04d\n", entries[i].name, entries[i].address);
+            } else {
+                fprintf(stderr, "Error: Entry symbol '%s' has no address\n", entries[i].name);
             }
         }
 

@@ -30,7 +30,9 @@ const OpcodeInfo opcodes[NUM_OPCODES] = {
 static OpCode get_opcode_value(const char *opcode_name);
 
 static void encode_operand(AddressingMethod method, const char *operand, int is_source);
+
 static void encode_register_operands(const char *source, const char *destination);
+
 static void print_binary(MachineWord word);
 
 /* Encode a single instruction into machine code */
@@ -48,6 +50,19 @@ void encode_instruction(const char *instruction, OpCode command_name) {
     opcode_value = command_name;
     src_method = get_addressing_method(source);
     dst_method = get_addressing_method(destination);
+
+    if (dst_method == ADDR_NONE) {
+        if (src_method != ADDR_NONE) {
+            dst_method = src_method;
+            src_method = ADDR_NONE;
+        }
+    }
+    /* Add validation here */
+    if (!validate_operand(source, opcode_value, src_method) ||
+        (destination[0] != '\0' && !validate_operand(destination, opcode_value, 0))) {
+        fprintf(stderr, "Error: Invalid operand(s) in instruction: %s\n", instruction);
+        return;
+    }
 
     printf("DEBUG: Opcode: %s, Source method: %d, Destination method: %d\n",
            opcodes[opcode_value].name, src_method, dst_method);
@@ -102,14 +117,16 @@ void encode_instruction(const char *instruction, OpCode command_name) {
     if ((src_method == ADDR_REGISTER || src_method == ADDR_INDEX) &&
         (dst_method == ADDR_REGISTER || dst_method == ADDR_INDEX)) {
         encode_register_operands(source, destination);
-        } else {
-            if (src_method != ADDR_NONE) {
-                encode_operand(src_method, source, 1);
-            }
-            if (dst_method != ADDR_NONE) {
-                encode_operand(dst_method, destination, 0);
-            }
+    } else {
+        if (src_method != ADDR_NONE) {
+            encode_operand(src_method, source, 1);
         }
+        if (dst_method != ADDR_NONE) {
+            if (src_method == ADDR_NONE) {
+                encode_operand(dst_method, source, 0);
+            } else { encode_operand(dst_method, destination, 0); }
+        }
+    }
 }
 
 static void encode_register_operands(const char *source, const char *destination) {
@@ -135,7 +152,7 @@ static void encode_register_operands(const char *source, const char *destination
 }
 
 void encode_directive(const char *directive, const char *operands) {
-   char *endptr;
+    char *endptr;
     long value;
 
     printf("DEBUG: Encoding directive: '%s' with operands: '%s'\n", directive, operands);
@@ -198,7 +215,6 @@ void encode_directive(const char *directive, const char *operands) {
     } else {
         fprintf(stderr, "Error: Unknown directive %s\n", directive);
     }
-
 }
 
 /* Determine the addressing method of an operand */
@@ -227,34 +243,45 @@ static void encode_operand(AddressingMethod method, const char *operand, int is_
     switch (method) {
         case ADDR_IMMEDIATE:
             encoded_operand = ((MachineWord) safe_atoi(operand + 1) & 0xFFF) << 3;
-        encoded_operand |= ARE_ABSOLUTE;
-        break;
+            encoded_operand |= ARE_ABSOLUTE;
+            break;
         case ADDR_DIRECT:
-            strncpy((char *) &encoded_operand, operand, sizeof(MachineWord) - 1);
-        encoded_operand <<= 3;
-        encoded_operand |= ARE_RELOCATABLE;
-        break;
+            /* Store index to string table */
+            if (string_count < MAX_STRINGS) {
+                strncpy(string_table[string_count], operand, MAX_STRING_LENGTH - 1);
+                string_table[string_count][MAX_STRING_LENGTH - 1] = '\0';
+                encoded_operand = (string_count << 2) | ARE_RELOCATABLE;
+                string_count++;
+            } else {
+                fprintf(stderr, "Error: String table full\n");
+                return;
+            }
+            break;
         case ADDR_INDEX:
         case ADDR_REGISTER:
-            register_num = operand[1] - '0';  /* Skip 'r' or '*r' */
-        if (is_source) {
-            encoded_operand |= (register_num & 0x7) << 6;
-        } else {
-            encoded_operand |= (register_num & 0x7) << 3;
-        }
-        encoded_operand |= ARE_ABSOLUTE;
-        break;
+            register_num = (operand[0] == '*') ? operand[2] - '0' : operand[1] - '0';
+            if (is_source) {
+                encoded_operand |= (register_num & 0x7) << 6;
+            } else {
+                encoded_operand |= (register_num & 0x7) << 3;
+            }
+            encoded_operand |= ARE_ABSOLUTE;
+            break;
         default:
             fprintf(stderr, "Error: Unknown addressing method\n");
-        return;
+            return;
     }
 
-    memory[IC + DC - 100] = encoded_operand;
+    memory[IC + DC - INITIAL_MEMORY_ADDRESS] = encoded_operand;
     IC++;
 
     printf("DEBUG: Encoded operand word: ");
-    print_binary(encoded_operand);
-    printf("\n");
+    if (method == ADDR_DIRECT) {
+        printf("%s (index: %d)\n", operand, encoded_operand >> 2);
+    } else {
+        print_binary(encoded_operand);
+        printf("\n");
+    }
 }
 
 /* Print a MachineWord in binary format */

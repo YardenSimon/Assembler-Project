@@ -11,6 +11,9 @@
 #include "globals.h"
 #include "encoder.h"
 
+char string_table[MAX_STRINGS][MAX_STRING_LENGTH];
+int string_count = 0;
+
 void print_memory_after_first_pass(void);
 
 

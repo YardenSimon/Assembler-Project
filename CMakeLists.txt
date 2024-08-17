@@ -12,7 +12,9 @@ add_library(untitled STATIC
         main.c
         macros.c
         utils.c
-        globals.h)
+        globals.h
+        entry_extern.h
+        entry_extern.c)
 
 add_executable(assembler main.c
         utils.h)

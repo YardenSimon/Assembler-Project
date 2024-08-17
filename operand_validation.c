@@ -141,7 +141,8 @@ int validate_operand(const char* op, OpCode opcode, int is_source) {
            op, OPCODE_NAMES[opcode], is_source);
 
     if (op == NULL || op[0] == '\0') {
-        return opcode_addressing[opcode].source_allowed == 0 && is_source;
+        return (is_source && opcode_addressing[opcode].source_allowed == 0) ||
+               (!is_source && opcode_addressing[opcode].dest_allowed == 0);
     }
 
     method = get_addressing_method(op);
@@ -150,8 +151,26 @@ int validate_operand(const char* op, OpCode opcode, int is_source) {
         return 0;
     }
 
-    printf("DEBUG: Operand validation result: %d\n", validate_operand_addressing(opcode, is_source, method));
-    return validate_operand_addressing(opcode, is_source, method);
+    /* For opcodes with only one operand, always treat it as a destination operand */
+    if (opcode_addressing[opcode].source_allowed == 0 && opcode_addressing[opcode].dest_allowed != 0) {
+        is_source = 0;
+    }
+
+    /* Check if the addressing method is allowed for this operand */
+    if (is_source) {
+        if (!(opcode_addressing[opcode].source_allowed & (1 << method-1))) {
+            printf("DEBUG: Invalid source addressing method for opcode\n");
+            return 0;
+        }
+    } else {
+        if (!(opcode_addressing[opcode].dest_allowed & (1 << method-1))) {
+            printf("DEBUG: Invalid destination addressing method for opcode\n");
+            return 0;
+        }
+    }
+
+    printf("DEBUG: Operand validation result: 1\n");
+    return 1;
 }
 
 int count_operands(const char* line) {
@@ -253,9 +272,13 @@ int validate_instruction(const char* line) {
         return 0;
     }
 
-    if (!validate_operand(first_operand, opcode_value, 1) ||
-        (operand_count == 2 && !validate_operand(second_operand, opcode_value, 0))) {
-        printf("DEBUG: Invalid operand(s)\n");
+    if (operand_count >= 1 && !validate_operand(first_operand, opcode_value, 1)) {
+        printf("DEBUG: Invalid first operand\n");
+        return 0;
+    }
+
+    if (operand_count == 2 && !validate_operand(second_operand, opcode_value, 0)) {
+        printf("DEBUG: Invalid second operand\n");
         return 0;
     }
 

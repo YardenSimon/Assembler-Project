@@ -26,6 +26,13 @@
 /* Opcode definitions */
 #define NUM_OPCODES 16
 
+/* In globals.h */
+#define MAX_STRINGS 1000
+#define MAX_STRING_LENGTH 31
+
+extern char string_table[MAX_STRINGS][MAX_STRING_LENGTH];
+extern int string_count;
+
 typedef enum {
     mov, cmp, add, sub, lea, clr, not, inc,
     dec, jmp, bne, red, prn, jsr, rts, stop

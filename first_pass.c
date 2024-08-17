@@ -6,6 +6,8 @@
 #include "symbol_table.h"
 #include "operand_validation.h"
 #include "globals.h"
+#include "entry_extern.h"
+
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
@@ -54,11 +56,13 @@ void perform_first_pass(const char *filename) {
     memset(memory, 0, memory_size * sizeof(MachineWord *));
 
     init_symbol_table();
+    init_entry_extern();
 
     while (safe_fgets(line, sizeof(line), file) != NULL) {
         line[strcspn(line, "\n")] = 0;
         if (line[0] == ';' || line[0] == '\0') continue;
         process_line(line);
+        printf("\n");
     }
 
     fclose(file);
@@ -85,17 +89,19 @@ static void process_line(char *line) {
     if (strncmp(line, DIRECTIVE_NAMES[0], strlen(DIRECTIVE_NAMES[0])) == 0 ||
         strncmp(line, DIRECTIVE_NAMES[1], strlen(DIRECTIVE_NAMES[1])) == 0) {
         handle_directive(line);
-    } else if (strncmp(line, DIRECTIVE_NAMES[2], strlen(DIRECTIVE_NAMES[2])) == 0) {
-        line += 7;
-        skip_whitespace(&line);
-        add_symbol(line, IC + DC);
-        symbol_table[symbol_count - 1].is_entry = 1;
-    } else if (strncmp(line, DIRECTIVE_NAMES[3], strlen(DIRECTIVE_NAMES[3])) == 0) {
-        line += 7;
-        skip_whitespace(&line);
-        add_symbol(line, IC + DC);
-        symbol_table[symbol_count - 1].is_external = 1;
-    } else { handle_instruction(line); }
+        } else  if (strncmp(line, DIRECTIVE_NAMES[2], strlen(DIRECTIVE_NAMES[2])) == 0) {
+            /* .entry directive */
+            line += strlen(DIRECTIVE_NAMES[2]);
+            skip_whitespace(&line);
+            add_entry(line);
+        } else if (strncmp(line, DIRECTIVE_NAMES[3], strlen(DIRECTIVE_NAMES[3])) == 0) {
+            /* .extern directive */
+            line += strlen(DIRECTIVE_NAMES[3]);
+            skip_whitespace(&line);
+            add_extern(line);
+        } else {
+            handle_instruction(line);
+        }
 }
 
 /*
@@ -116,7 +122,7 @@ static void handle_label(char *line) {
 
     strncpy(label, line, label_length);
     label[label_length] = '\0';
-    add_symbol(label, IC);
+    add_symbol(label, IC+DC);
     line = colon + 1;
     skip_whitespace(&line);
 }
@@ -165,7 +171,6 @@ static void handle_directive(char* line) {
             /////////////////// encode_directive - data ///////////////////////////
             sprintf(value_str, "%d", value);  // Convert int to string
             encode_directive(".data", value_str);
-            IC++;
             ///         next memory cell
 
         }
@@ -178,7 +183,6 @@ static void handle_directive(char* line) {
         }
         /////////////////// encode_directive - string ///////////////////////////
         encode_directive(".string", line);
-        IC++;
 
         ///         next memory cell
         while (*line && *line != '"') {
