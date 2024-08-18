@@ -12,6 +12,7 @@ typedef struct {
 
 typedef struct {
     char name[MAX_SYMBOL_LENGTH];
+    int address;
 } ExternSymbol;
 
 #define MAX_ENTRIES 100
@@ -24,7 +25,7 @@ extern ExternSymbol externs[MAX_EXTERNS];
 extern int extern_count;
 
 void add_entry(const char* name);
-void add_extern(const char* name);
+void add_extern(const char* name, int address);
 void init_entry_extern(void);
 void set_entry_address(const char* name, int address);
 

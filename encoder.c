@@ -118,13 +118,13 @@ void encode_instruction(const char *instruction, OpCode command_name) {
         (dst_method == ADDR_REGISTER || dst_method == ADDR_INDEX)) {
         encode_register_operands(source, destination);
     } else {
-        if (src_method != ADDR_NONE) {
-            encode_operand(src_method, source, 1);
-        }
         if (dst_method != ADDR_NONE) {
             if (src_method == ADDR_NONE) {
                 encode_operand(dst_method, source, 0);
-            } else { encode_operand(dst_method, destination, 0); }
+            } else {
+                encode_operand(src_method, source, 1);
+                encode_operand(dst_method, destination, 0);
+            }
         }
     }
 }
@@ -148,6 +148,8 @@ static void encode_register_operands(const char *source, const char *destination
 
     printf("DEBUG: Encoded register operands: ");
     print_binary(encoded_word);
+    printf(" in address: %d ", IC + DC);
+
     printf("\n");
 }
 
@@ -176,6 +178,7 @@ void encode_directive(const char *directive, const char *operands) {
             printf("DEBUG: Encoded .data value: ");
             print_binary((MachineWord) (value & 0x7FFF));
             printf("\n");
+            printf(" in address: %d ", IC + DC);
             DC++;
             operands = endptr;
         }
@@ -194,6 +197,7 @@ void encode_directive(const char *directive, const char *operands) {
             memory[IC + DC - 100] = (MachineWord) (*operands & 0x7F);
             printf("DEBUG: Encoded character: '%c' as ", *operands);
             print_binary((MachineWord) (*operands & 0x7F));
+            printf(" in address: %d ", IC + DC);
             printf("\n");
             DC++;
             operands++;
@@ -210,6 +214,7 @@ void encode_directive(const char *directive, const char *operands) {
         memory[IC + DC - 100] = 0;
         printf("DEBUG: Encoded null terminator: ");
         print_binary(0);
+        printf(" in address: %d ", IC + DC);
         printf("\n");
         DC++;
     } else {
@@ -262,8 +267,10 @@ static void encode_operand(AddressingMethod method, const char *operand, int is_
             register_num = (operand[0] == '*') ? operand[2] - '0' : operand[1] - '0';
             if (is_source) {
                 encoded_operand |= (register_num & 0x7) << 6;
+                printf(" in address: %d ", IC + DC);
             } else {
                 encoded_operand |= (register_num & 0x7) << 3;
+                printf(" in address: %d ", IC + DC);
             }
             encoded_operand |= ARE_ABSOLUTE;
             break;
@@ -276,6 +283,7 @@ static void encode_operand(AddressingMethod method, const char *operand, int is_
     IC++;
 
     printf("DEBUG: Encoded operand word: ");
+    printf(" in address: %d ", IC + DC - 1);
     if (method == ADDR_DIRECT) {
         printf("%s (index: %d)\n", operand, encoded_operand >> 2);
     } else {

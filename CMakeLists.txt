@@ -14,7 +14,9 @@ add_library(untitled STATIC
         utils.c
         globals.h
         entry_extern.h
-        entry_extern.c)
+        entry_extern.c
+        errors.h
+        errors.c)
 
 add_executable(assembler main.c
         utils.h)

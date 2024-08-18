@@ -12,22 +12,33 @@
 
 extern int IC;
 extern int DC;
-extern MachineWord* memory;
+extern MachineWord *memory;
 
 static void update_symbol_addresses(void);
-static void create_output_files(const char* filename);
-static void write_object_file(const char* filename);
-static void write_externals_file(const char* filename);
-static void write_entries_file(const char* filename);
-static char* convert_to_octal(unsigned short num);
-static char* get_filename_without_extension(const char* filename);
-//delete later
-static void print_binary(MachineWord word) ;
 
-void perform_second_pass(const char* filename) {
+static void create_output_files(const char *filename);
+
+static void write_object_file(const char *filename);
+
+static void write_externals_file(const char *filename);
+
+static void write_entries_file(const char *filename);
+
+static char *convert_to_octal(unsigned short num);
+
+static char *get_filename_without_extension(const char *filename);
+
+
+/* DELETE LATER !!!!!!!!!!!!!!!!!!!!!!!!!*/
+void print_externals(void);
+
+void perform_second_pass(const char *filename) {
     printf("DEBUG: Starting second pass for file: %s\n", filename);
 
     update_symbol_addresses();
+
+    print_externals();
+
     create_output_files(filename);
 
     printf("DEBUG: Second pass completed successfully\n");
@@ -36,8 +47,8 @@ void perform_second_pass(const char* filename) {
 /* In second_pass.c */
 
 static void update_symbol_addresses(void) {
-    int i;
-    Symbol* symbol;
+    int i, j;
+    Symbol *symbol;
     MachineWord word;
     int string_index;
 
@@ -50,7 +61,8 @@ static void update_symbol_addresses(void) {
             string_index = word >> 2;
             if (string_index < string_count) {
                 symbol = get_symbol_by_name(string_table[string_index]);
-                if (symbol != NULL) { /*SHIFT 2 LEFT*/
+                if (symbol != NULL) {
+                    /*SHIFT 2 LEFT*/
                     MachineWord new_word = ((symbol->address & 0xFFF) << 3) | ARE_RELOCATABLE;
                     printf("DEBUG: Updated memory[%d] for symbol %s\n", i, string_table[string_index]);
                     printf("Old value: %d\n", word);
@@ -60,6 +72,9 @@ static void update_symbol_addresses(void) {
                     /* If symbol is not found, it might be an external symbol */
                     MachineWord new_word = ARE_EXTERNAL;
                     printf("DEBUG: Symbol %s not found in table, assuming external\n", string_table[string_index]);
+                    add_extern(string_table[string_index], i + INITIAL_MEMORY_ADDRESS );
+                    printf("DEBUG: Added extern %s in address: %d\n", string_table[string_index], i + INITIAL_MEMORY_ADDRESS);
+
                     printf("Old value: %d\n", word);
                     printf("New value: %d\n", new_word);
                     memory[i] = new_word;
@@ -80,32 +95,23 @@ static void update_symbol_addresses(void) {
 }
 
 
-/*DELETE LATER*/
-static void print_binary(MachineWord word) {
-    int i;
-    for (i = WORD_SIZE - 1; i >= 0; i--) {
-        printf("%d", (word >> i) & 1);
-    }
-}
-
-static void create_output_files(const char* filename) {
-    char* base_filename = get_filename_without_extension(filename);
+static void create_output_files(const char *filename) {
+    char *base_filename = get_filename_without_extension(filename);
     write_object_file(base_filename);
     write_externals_file(base_filename);
     write_entries_file(base_filename);
     free(base_filename);
 }
 
-static void write_object_file(const char* filename)
-{
+static void write_object_file(const char *filename) {
     char ob_filename[MAX_FILENAME_LENGTH];
-    FILE* ob_file;
+    FILE *ob_file;
     int i;
 
     sprintf(ob_filename, "%s%s", filename, OBJECT_FILE_EXT);
     ob_file = safe_fopen(ob_filename, "w");
 
-    fprintf(ob_file, "%d %d\n", IC - INITIAL_MEMORY_ADDRESS, DC);
+    fprintf(ob_file, "  %d %d\n", IC - INITIAL_MEMORY_ADDRESS, DC);
 
     for (i = 0; i < (IC + DC - INITIAL_MEMORY_ADDRESS); i++) {
         fprintf(ob_file, "%04d %s\n", i + INITIAL_MEMORY_ADDRESS, convert_to_octal(memory[i]));
@@ -115,34 +121,18 @@ static void write_object_file(const char* filename)
     printf("DEBUG: Object file '%s' created successfully\n", ob_filename);
 }
 
-static void write_externals_file(const char* filename) {
+static void write_externals_file(const char *filename) {
     char ext_filename[MAX_FILENAME_LENGTH];
-    FILE* ext_file = NULL;
-    int i, j;
-    MachineWord word;
-    char symbol_name[MAX_SYMBOL_LENGTH + 1];
+    FILE *ext_file = NULL;
+    int i;
 
     if (extern_count > 0) {
-        snprintf(ext_filename, sizeof(ext_filename), "%s%s", filename, EXTERNALS_FILE_EXT);
+        snprintf(ext_filename, sizeof(ext_filename), "%s.ext", filename);
         ext_file = safe_fopen(ext_filename, "w");
 
         for (i = 0; i < extern_count; i++) {
-            /* Search for uses of this external symbol in the code */
-            for (j = 0; j < IC + DC - INITIAL_MEMORY_ADDRESS; j++) {
-                word = memory[j];
-                /* Check if the word is a symbol (assuming it's stored as characters) */
-                if (isprint((unsigned char)((char*)&word)[0])) {
-                    strncpy(symbol_name, (char*)&word, sizeof(MachineWord));
-                    symbol_name[sizeof(MachineWord)] = '\0'; /* Ensure null-termination */
-
-                    if (strcmp(symbol_name, externs[i].name) == 0) {
-                        /* Found a use of the external symbol */
-                        fprintf(ext_file, "%s %04d\n", externs[i].name, j + INITIAL_MEMORY_ADDRESS);
-                        printf("DEBUG: External symbol %s used at address %04d\n",
-                               externs[i].name, j + INITIAL_MEMORY_ADDRESS);
-                    }
-                }
-            }
+            fprintf(ext_file, "%s\t%04d\n", externs[i].name, externs[i].address);
+            printf("DEBUG: Wrote extern symbol %s at address %04d\n", externs[i].name, externs[i].address);
         }
 
         fclose(ext_file);
@@ -152,9 +142,10 @@ static void write_externals_file(const char* filename) {
     }
 }
 
-static void write_entries_file(const char* filename) {
+
+static void write_entries_file(const char *filename) {
     char ent_filename[MAX_FILENAME_LENGTH];
-    FILE* ent_file = NULL;
+    FILE *ent_file = NULL;
     int i;
 
     if (entry_count > 0) {
@@ -178,8 +169,7 @@ static void write_entries_file(const char* filename) {
 }
 
 
-static char* convert_to_octal(unsigned short num)
-{
+static char *convert_to_octal(unsigned short num) {
     static char octal_str[7];
     int i;
     unsigned short temp = num;
@@ -193,13 +183,29 @@ static char* convert_to_octal(unsigned short num)
     return octal_str;
 }
 
-static char* get_filename_without_extension(const char* filename) {
+static char *get_filename_without_extension(const char *filename) {
     BaseFilename base_filename = get_base_filename(filename);
-    char* result = (char*)safe_malloc(base_filename.length + 1);
+    char *result = (char *) safe_malloc(base_filename.length + 1);
 
     strncpy(result, base_filename.name, base_filename.length);
     result[base_filename.length] = '\0';
 
     free(base_filename.name);
     return result;
+}
+
+/* DELETE LATER !!!!!!!!!!!!!!!!!!!!!!!!!*/
+void print_externals(void) {
+    int i;
+    printf("\n--- External Symbols ---\n");
+    printf("%-*s %-10s\n", MAX_SYMBOL_LENGTH, "Name", "Address");
+    printf("----------------------------------------\n");
+    for (i = 0; i < extern_count; i++) {
+        printf("%-*s %-10d\n",
+               MAX_SYMBOL_LENGTH,
+               externs[i].name,
+               externs[i].address);
+    }
+    printf("----------------------------------------\n");
+    printf("Total external symbols: %d\n", extern_count);
 }

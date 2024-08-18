@@ -26,10 +26,11 @@ void add_entry(const char* name) {
     }
 }
 
-void add_extern(const char* name) {
+void add_extern(const char* name, int address) {
     if (extern_count < MAX_EXTERNS) {
         strncpy(externs[extern_count].name, name, MAX_SYMBOL_LENGTH - 1);
         externs[extern_count].name[MAX_SYMBOL_LENGTH - 1] = '\0';
+        entries[extern_count].address = address;  /* Address will be set later */
         extern_count++;
     } else {
         fprintf(stderr, "Error: Too many extern symbols\n");

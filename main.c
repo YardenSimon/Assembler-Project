@@ -75,17 +75,30 @@ int main(int argc, char *argv[]) {
 #include <stdio.h>
 
 void print_memory_after_first_pass() {
-    int i, j;
+    int i;
+    MachineWord word;
+    char *symbol_name;
 
     for (i = 0; i < memory_size; i++) {
-        /* Only print if the memory location is non-zero, to avoid printing uninitialized memory slots */
-        if (memory[i] != 0) {
-            /* Print the address and the encoded word in binary */
-            printf("Address: %d, Encoded Word: ", i + 100);  // Assuming address starts at 100
-            for (j = 14; j >= 0; j--) {
-                printf("%d", (memory[i] >> j) & 1);
+        word = memory[i];
+
+        /* Only print if the memory location is non-zero */
+        if (word != 0) {
+            printf("Address: %d, ", i + 100);  // Assuming address starts at 100
+
+            /* Check if the word represents a symbol (string) */
+            if ((word & 3) == ARE_RELOCATABLE) {
+                int string_index = word >> 2;
+                if (string_index < string_count) {
+                    symbol_name = string_table[string_index];
+                    printf("Symbol: %s\n", symbol_name);
+                } else {
+                    printf("Encoded Word: %015o\n", word);
+                }
+            } else {
+                /* If it's not a symbol, print the encoded word in octal */
+                printf("Encoded Word: %015o\n", word);
             }
-            printf("\n");
         }
     }
 }

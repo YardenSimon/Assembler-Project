@@ -98,7 +98,7 @@ static void process_line(char *line) {
             /* .extern directive */
             line += strlen(DIRECTIVE_NAMES[3]);
             skip_whitespace(&line);
-            add_extern(line);
+            add_extern(line, -1);
         } else {
             handle_instruction(line);
         }
