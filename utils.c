@@ -1,20 +1,27 @@
-/* utils.c */
-
 #include "utils.h"
 #include <ctype.h>
 #include <string.h>
 
+/*
+ * Skips whitespace characters in the given string.
+ * Moves the string pointer forward past any whitespace characters.
+ */
 void skip_whitespace(char** str) {
     while (**str && isspace((unsigned char)**str)) {
         (*str)++;
     }
 }
 
+/*
+ * Extracts the base filename (excluding path and extension) from a full filename.
+ * Allocates memory for the base name and returns it along with its length.
+ */
 BaseFilename get_base_filename(const char* filename) {
     BaseFilename result;
     const char* base_name;
     const char* dot_position;
 
+    /* Find the last occurrence of '/' to get the base name */
     base_name = strrchr(filename, '/');
     if (base_name == NULL) {
         base_name = filename;
@@ -22,6 +29,7 @@ BaseFilename get_base_filename(const char* filename) {
         base_name++;  /* Skip the '/' */
     }
 
+    /* Find the last occurrence of '.' to determine the end of the base name */
     dot_position = strrchr(base_name, '.');
     if (dot_position != NULL) {
         result.length = dot_position - base_name;
@@ -36,6 +44,10 @@ BaseFilename get_base_filename(const char* filename) {
     return result;
 }
 
+/*
+ * Safely allocates memory of the specified size.
+ * Exits the program if memory allocation fails.
+ */
 void* safe_malloc(size_t size) {
     void* ptr = malloc(size);
     if (ptr == NULL) {
@@ -45,6 +57,10 @@ void* safe_malloc(size_t size) {
     return ptr;
 }
 
+/*
+ * Safely reallocates memory for a given pointer.
+ * Exits the program if memory reallocation fails.
+ */
 void* safe_realloc(void* ptr, size_t size) {
     void* new_ptr = realloc(ptr, size);
     if (new_ptr == NULL) {
@@ -54,6 +70,11 @@ void* safe_realloc(void* ptr, size_t size) {
     return new_ptr;
 }
 
+
+/*
+ * Safely opens a file with the given filename and mode.
+ * Exits the program if the file cannot be opened.
+ */
 FILE* safe_fopen(const char* filename, const char* mode) {
     FILE* file = fopen(filename, mode);
     if (file == NULL) {
@@ -63,17 +84,25 @@ FILE* safe_fopen(const char* filename, const char* mode) {
     return file;
 }
 
+/*
+ * Safely reads a line from a file into the provided buffer.
+ * Exits the program if reading from the file fails.
+ */
 char* safe_fgets(char* str, int n, FILE* stream) {
     if (fgets(str, n, stream) == NULL) {
         if (ferror(stream)) {
             fprintf(stderr, "Error: Failed to read from file\n");
             exit(EXIT_FAILURE);
         }
-        return NULL;  /* EOF reached */
+        return NULL;
     }
     return str;
 }
 
+/*
+ * Converts a string to an integer.
+ * Checks for errors in conversion and range, and exits the program if errors are found.
+ */
 int safe_atoi(const char* str) {
     char* endptr;
     long val = strtol(str, &endptr, 10);
