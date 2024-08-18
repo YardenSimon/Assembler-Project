@@ -32,6 +32,7 @@
 
 extern char string_table[MAX_STRINGS][MAX_STRING_LENGTH];
 extern int string_count;
+extern char current_filename[MAX_FILENAME_LENGTH];
 
 typedef enum {
     mov, cmp, add, sub, lea, clr, not, inc,

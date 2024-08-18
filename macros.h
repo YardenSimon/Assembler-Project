@@ -21,6 +21,8 @@ int can_be_macro_name(const char *word);
 /* Replace macros in the input file and generate .am file */
 void replace_macros(const char *input_name);
 
+int is_macro_defined(const char* name);
+
 /* Free all allocated memory for macros */
 void free_macros(void);
 

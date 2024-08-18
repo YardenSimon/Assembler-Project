@@ -69,6 +69,9 @@ void perform_first_pass(const char *filename) {
  * Manages .extern directives by adding them to the symbol table.
  */
 static void process_line(char *line) {
+    char *original_line = line;
+    char *end;
+
     skip_whitespace(&line);
 
     if (is_label(line)) {
@@ -81,19 +84,25 @@ static void process_line(char *line) {
     if (strncmp(line, DIRECTIVE_NAMES[0], strlen(DIRECTIVE_NAMES[0])) == 0 ||
         strncmp(line, DIRECTIVE_NAMES[1], strlen(DIRECTIVE_NAMES[1])) == 0) {
         handle_directive(line);
-    } else if (strncmp(line, DIRECTIVE_NAMES[2], strlen(DIRECTIVE_NAMES[2])) == 0) {
-        /* .entry directive */
-        line += strlen(DIRECTIVE_NAMES[2]);
-        skip_whitespace(&line);
-        add_entry(*line);
-    } else if (strncmp(line, DIRECTIVE_NAMES[3], strlen(DIRECTIVE_NAMES[3])) == 0) {
-        /* .extern directive */
-        line += strlen(DIRECTIVE_NAMES[3]);
-        skip_whitespace(&line);
-        add_extern(*line, -1);
-    } else {
-        handle_instruction(line);
-    }
+        } else if (strncmp(line, DIRECTIVE_NAMES[2], strlen(DIRECTIVE_NAMES[2])) == 0) {
+            /* .entry directive */
+            line += strlen(DIRECTIVE_NAMES[2]);
+            skip_whitespace(&line);
+            add_entry(line);
+        } else if (strncmp(line, DIRECTIVE_NAMES[3], strlen(DIRECTIVE_NAMES[3])) == 0) {
+            /* .extern directive */
+            line += strlen(DIRECTIVE_NAMES[3]);
+            skip_whitespace(&line);
+            /* Remove trailing whitespace */
+            end = line + strlen(line) - 1;
+            while (end > line && isspace((unsigned char)*end)) {
+                *end = '\0';
+                end--;
+            }
+            add_extern(line);
+        } else {
+            handle_instruction(line);
+        }
 }
 
 /*

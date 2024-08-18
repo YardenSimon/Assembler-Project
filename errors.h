@@ -48,7 +48,7 @@ void free_error_handling(void);
 int is_reserved_word(const char* word);
 
 /* Check if a symbol is already defined as a label */
-int is_label(const char* symbol);
+int is_label_name(const char* symbol);
 
 /* Check if a symbol is already defined as a macro */
 int is_macro(const char* symbol);

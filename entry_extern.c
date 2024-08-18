@@ -1,4 +1,6 @@
 #include "entry_extern.h"
+#include "utils.h"
+#include "errors.h"
 #include <string.h>
 #include <stdio.h>
 
@@ -9,6 +11,9 @@ int entry_count = 0;
 ExternSymbol externs[MAX_EXTERNS];
 int extern_count = 0;
 
+ExternUse *extern_uses = NULL;
+int extern_use_count = 0;
+
 /*
  * Initialize entry and extern symbol counts to zero.
  * This function is typically called at the start of the program
@@ -17,6 +22,11 @@ int extern_count = 0;
 void init_entry_extern(void) {
     entry_count = 0;
     extern_count = 0;
+}
+
+void init_extern_uses(void) {
+    extern_uses = (ExternUse *)safe_malloc(MAX_EXTERN_USES * sizeof(ExternUse));
+    extern_use_count = 0;
 }
 
 /*
@@ -42,17 +52,28 @@ void add_entry(const char* name) {
  * The function checks if there is space for more symbols.
  * If space is available, it copies the symbol name into the array.
  */
-void add_extern(const char* name, int address) {
+void add_extern(const char* name) {
     if (extern_count < MAX_EXTERNS) {
         strncpy(externs[extern_count].name, name, MAX_SYMBOL_LENGTH - 1);
         externs[extern_count].name[MAX_SYMBOL_LENGTH - 1] = '\0';
-        entries[entry_count].address = address;
         extern_count++;
+        printf("DEBUG: Added extern %s, total externs: %d\n", name, extern_count);
     } else {
         fprintf(stderr, "Error: Too many extern symbols\n");
     }
 }
 
+void add_extern_use(const char* name, int address) {
+    if (extern_use_count < MAX_EXTERN_USES) {
+        strncpy(extern_uses[extern_use_count].name, name, MAX_SYMBOL_LENGTH - 1);
+        extern_uses[extern_use_count].name[MAX_SYMBOL_LENGTH - 1] = '\0';
+        extern_uses[extern_use_count].address = address;
+        extern_use_count++;
+        printf("DEBUG: Added extern use: %s %04d\n", name, address);
+    } else {
+        add_error(ERROR_INVALID_OPERAND, current_filename, -1, "Too many external symbol uses");
+    }
+}
 
 /*
  * Set the address of an existing entry symbol.
@@ -69,4 +90,18 @@ void set_entry_address(const char* name, int address) {
         }
     }
     fprintf(stderr, "Error: Entry symbol '%s' not found\n", name);
+}
+
+/* Free extern_uses array
+ * Reset all counters
+ * We don't need to free entries and externs arrays as they are statically allocated */
+void free_entry_extern_resources(void) {
+    if (extern_uses != NULL) {
+        free(extern_uses);
+        extern_uses = NULL;
+    }
+    entry_count = 0;
+    extern_count = 0;
+    extern_use_count = 0;
+
 }

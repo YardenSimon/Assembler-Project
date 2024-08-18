@@ -13,6 +13,7 @@
 
 char string_table[MAX_STRINGS][MAX_STRING_LENGTH];
 int string_count = 0;
+char current_filename[MAX_FILENAME_LENGTH] = {0};
 
 void print_memory_after_first_pass(void);
 
@@ -36,12 +37,13 @@ static void process_file(const char *filename) {
     am_filename[base_filename.length] = '\0';
     strcat(am_filename, ".am");
 
+    strncpy(current_filename, am_filename, MAX_FILENAME_LENGTH - 1);
+    current_filename[MAX_FILENAME_LENGTH - 1] = '\0';
+
     /* Perform first pass on .am file */
     perform_first_pass(am_filename);
-
+/* DELETE LATER - FOR DEBOG UNLY!!!!!!!!!!!!*/
     print_memory_after_first_pass();
-
-
     print_symbol_table();
 
     /* Perform second pass on .am file */

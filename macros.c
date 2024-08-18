@@ -243,6 +243,16 @@ void replace_macros(const char *input_name) {
     free(base_filename.name);
 }
 
+int is_macro_defined(const char* name) {
+    int i;
+    for (i = 0; i < macro_count; i++) {
+        if (strcmp(macros[i].name, name) == 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 /*
  * Frees all memory allocated for macros. This includes freeing each macro's content
  * and the macro array itself. It also resets the macro-related variables to their
