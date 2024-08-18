@@ -13,6 +13,20 @@ typedef unsigned short MachineWord;
 extern int memory_size;
 extern MachineWord *memory;
 
+/* Node structure for the linked list of encoded data */
+typedef struct EncodedDataNode {
+ MachineWord word;
+ struct EncodedDataNode *next;
+} EncodedDataNode;
+
+/* Data structure to store encoded directives */
+typedef struct {
+ EncodedDataNode *head;
+ EncodedDataNode *tail;
+ int count;
+} EncodedData;
+
+extern EncodedData encoded_data;
 
 /* AddressingMethod enum represents the five addressing methods in our assembly language:
  * 0 - None: No operand
@@ -33,6 +47,14 @@ typedef enum {
  * ARE_RELOCATABLE (2): The R bit (bit 1) is on, used for relocatable addresses
  * ARE_EXTERNAL (1): The E bit (bit 0) is on, used for external references */
 
+/* Function to initialize the encoded data structure */
+void init_encoded_data(void);
+
+/* Function to add encoded data to the main memory */
+void add_encoded_data_to_memory(void);
+
+/* Function to free the encoded data structure */
+void free_encoded_data(void);
 
 /* Function to encode a single instruction into machine code */
 void encode_instruction(const char* instruction, OpCode command_name);

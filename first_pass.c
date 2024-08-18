@@ -15,6 +15,7 @@ int DC = 0;
 MachineWord *memory = NULL;
 int memory_size = 0;
 
+
 static void process_line(char *line);
 static void handle_label(char *line);
 static void handle_instruction(char *line);
@@ -41,7 +42,7 @@ void perform_first_pass(const char *filename) {
 
     file = safe_fopen(filename, "r");
 
-    IC = 100;
+    IC = INITIAL_MEMORY_ADDRESS;
     DC = 0;
 
     memory_size = MEMORY_SIZE;
@@ -129,7 +130,7 @@ static void handle_label(char *line) {
 
     strncpy(label, line, label_length);
     label[label_length] = '\0';
-    add_symbol(label, IC + DC);
+    add_symbol(label, memory_address);
 
     /* Move the line pointer after the label */
     line = colon + 1;

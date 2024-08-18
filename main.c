@@ -43,8 +43,12 @@ static void process_file(const char *filename) {
     strncpy(current_filename, am_filename, MAX_FILENAME_LENGTH - 1);
     current_filename[MAX_FILENAME_LENGTH - 1] = '\0';
 
+    init_encoded_data();
     /* Perform first pass on .am file */
     perform_first_pass(am_filename);
+
+    add_encoded_data_to_memory();
+
 /* DELETE LATER - FOR DEBOG UNLY!!!!!!!!!!!!*/
     print_memory_after_first_pass();
     print_symbol_table();
@@ -53,7 +57,7 @@ static void process_file(const char *filename) {
     perform_second_pass(am_filename);
 
     printf("Assembly completed for file: %s\n", filename);
-
+    free_encoded_data();
     /* Free allocated resources */
     free(base_filename.name);
     free_macros();
@@ -84,12 +88,12 @@ void print_memory_after_first_pass() {
     MachineWord word;
     char *symbol_name;
 
-    for (i = 0; i < memory_size; i++) {
+    for (i = 0; i < memory_address; i++) {
         word = memory[i];
 
         /* Only print if the memory location is non-zero */
         if (word != 0) {
-            printf("Address: %d, ", i + 100);  // Assuming address starts at 100
+            printf("Address: %d, ", i + 100);
 
             /* Check if the word represents a symbol (string) */
             if ((word & 3) == ARE_RELOCATABLE) {

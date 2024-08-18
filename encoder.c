@@ -1,6 +1,7 @@
 #include "encoder.h"
 #include "operand_validation.h"
 #include "utils.h"
+#include "globals.h"
 #include <string.h>
 #include <stdio.h>
 #include <ctype.h>
@@ -10,6 +11,11 @@
 
 extern int IC;
 extern int DC;
+int memory_address = INITIAL_MEMORY_ADDRESS;
+
+
+
+EncodedData encoded_data = {NULL, NULL, 0};
 
 /* Structure to hold information about each opcode */
 typedef struct {
@@ -30,6 +36,37 @@ const OpcodeInfo opcodes[NUM_OPCODES] = {
 static void encode_operand(AddressingMethod method, const char *operand, int is_source);
 static void encode_register_operands(const char *source, const char *destination);
 static void print_binary(MachineWord word);
+
+/*
+ * Initializes the encoded data structure.
+ * This function sets up an empty linked list for storing encoded directive words.
+ */
+void init_encoded_data(void) {
+    encoded_data.head = NULL;
+    encoded_data.tail = NULL;
+    encoded_data.count = 0;
+}
+
+/*
+ * Adds an encoded word to the encoded data structure.
+ * This function creates a new node and adds it to the end of the linked list.
+ */
+static void add_to_encoded_data(MachineWord word) {
+    EncodedDataNode *new_node = (EncodedDataNode *)safe_malloc(sizeof(EncodedDataNode));
+    new_node->word = word;
+    new_node->next = NULL;
+
+    if (encoded_data.tail == NULL) {
+        encoded_data.head = new_node;
+        encoded_data.tail = new_node;
+    } else {
+        encoded_data.tail->next = new_node;
+        encoded_data.tail = new_node;
+    }
+
+    encoded_data.count++;
+    DC = encoded_data.count;
+}
 
 /*
  * This function encodes a single assembly instruction into machine code.
@@ -115,8 +152,9 @@ void encode_instruction(const char *instruction, OpCode command_name) {
 
     encoded_word |= ARE_ABSOLUTE;
 
-    memory[IC + DC - 100] = encoded_word;
+    memory[memory_address - INITIAL_MEMORY_ADDRESS] = encoded_word;
     IC++;
+    memory_address++;
 
     printf("DEBUG: Encoded instruction word: ");
     print_binary(encoded_word);
@@ -160,8 +198,9 @@ static void encode_register_operands(const char *source, const char *destination
     encoded_word |= (dst_reg & 0x7) << 3;
     encoded_word |= ARE_ABSOLUTE;
 
-    memory[IC + DC - 100] = encoded_word;
+    memory[memory_address - INITIAL_MEMORY_ADDRESS] = encoded_word;
     IC++;
+    memory_address++;
 
     printf("DEBUG: Encoded register operands: ");
     print_binary(encoded_word);
@@ -174,8 +213,7 @@ static void encode_register_operands(const char *source, const char *destination
  * .data: Encodes a list of integer values
  * .string: Encodes a string as ASCII values, including a null terminator
  * The function parses the operands, converts them to appropriate machine words,
- * and stores them in memory. It also performs error checking for invalid input
- * and memory overflow conditions.
+ * and stores them in the encoded data structure. It also performs error checking for invalid input.
  */
 void encode_directive(const char *directive, const char *operands) {
     char *endptr;
@@ -185,7 +223,7 @@ void encode_directive(const char *directive, const char *operands) {
 
     if (strcmp(directive, ".data") == 0) {
         while (*operands) {
-            while (isspace((unsigned char) *operands) || *operands == ',') operands++;
+            while (isspace((unsigned char)*operands) || *operands == ',') operands++;
             if (*operands == '\0') break;
 
             value = strtol(operands, &endptr, 10);
@@ -193,16 +231,13 @@ void encode_directive(const char *directive, const char *operands) {
                 fprintf(stderr, "Error: Invalid number in .data directive\n");
                 return;
             }
-            if (DC >= MEMORY_SIZE) {
-                fprintf(stderr, "Error: Data segment overflow\n");
-                return;
-            }
             /* Encode the value into 15 bits */
-            memory[IC + DC - 100] = (MachineWord) (value & 0x7FFF);
+            add_to_encoded_data((MachineWord)(value & 0x7FFF));
+            memory_address++;
+            printf("\t\t\tmemory address: %d\n", memory_address);
             printf("DEBUG: Encoded .data value: ");
-            print_binary((MachineWord) (value & 0x7FFF));
+            print_binary((MachineWord)(value & 0x7FFF));
             printf("\n");
-            DC++;
             operands = endptr;
         }
     } else if (strcmp(directive, ".string") == 0) {
@@ -212,31 +247,25 @@ void encode_directive(const char *directive, const char *operands) {
         }
         operands++;
         while (*operands && *operands != '"') {
-            if (DC >= MEMORY_SIZE) {
-                fprintf(stderr, "Error: Data segment overflow\n");
-                return;
-            }
             /* Encode ASCII value of the character */
-            memory[IC + DC - 100] = (MachineWord) (*operands & 0x7F);
+            add_to_encoded_data((MachineWord)(*operands & 0x7F));
+            memory_address++;
+            printf("\t\t\tmemory address: %d\n", memory_address);
             printf("DEBUG: Encoded character: '%c' as ", *operands);
-            print_binary((MachineWord) (*operands & 0x7F));
+            print_binary((MachineWord)(*operands & 0x7F));
             printf("\n");
-            DC++;
             operands++;
         }
         if (*operands != '"') {
             fprintf(stderr, "Error: String must end with a quote\n");
             return;
         }
-        if (DC >= MEMORY_SIZE) {
-            fprintf(stderr, "Error: Data segment overflow\n");
-            return;
-        }
-        memory[IC + DC - 100] = 0;
+        add_to_encoded_data(0);
+        memory_address++;
+        printf("\t\t\tmemory address: %d\n", memory_address);
         printf("DEBUG: Encoded null terminator: ");
         print_binary(0);
         printf("\n");
-        DC++;
     } else {
         fprintf(stderr, "Error: Unknown directive %s\n", directive);
     }
@@ -313,8 +342,9 @@ static void encode_operand(AddressingMethod method, const char *operand, int is_
             return;
     }
 
-    memory[IC + DC - INITIAL_MEMORY_ADDRESS] = encoded_operand;
+    memory[memory_address - INITIAL_MEMORY_ADDRESS] = encoded_operand;
     IC++;
+    memory_address++;
 
     printf("DEBUG: Encoded operand word: ");
     if (method == ADDR_DIRECT) {
@@ -325,13 +355,18 @@ static void encode_operand(AddressingMethod method, const char *operand, int is_
     }
 }
 
-/* DEBUG - DELETE! */
-static void print_binary(MachineWord word) {
-    int i;
-    for (i = WORD_SIZE - 1; i >= 0; i--) {
-        /* 15 bits, from MSB to LSB */
-        printf("%d", (word >> i) & 1);
-        if (i % 5 == 0 && i != 0) printf(" "); /* Space every 5 bits for readability */
+/*
+ * Adds the encoded directive data to the end of the main memory array.
+ * This function should be called after all instructions have been processed.
+ */
+void add_encoded_data_to_memory(void) {
+    EncodedDataNode *current = encoded_data.head;
+    int i = 0;
+
+    while (current != NULL) {
+        memory[memory_address + i - DC - INITIAL_MEMORY_ADDRESS] = current->word;
+        current = current->next;
+        i++;
     }
 }
 
@@ -344,4 +379,32 @@ static void print_binary(MachineWord word) {
 void set_ARE(MachineWord *word, AREType are) {
     *word &= ~((1 << ARE_BITS) - 1); /* Clear the last ARE_BITS bits */
     *word |= are; /* Set the ARE bits */
+}
+
+/*
+ * Frees the memory allocated for the encoded data structure.
+ */
+void free_encoded_data(void) {
+    EncodedDataNode *current = encoded_data.head;
+    EncodedDataNode *next;
+
+    while (current != NULL) {
+        next = current->next;
+        free(current);
+        current = next;
+    }
+
+    encoded_data.head = NULL;
+    encoded_data.tail = NULL;
+    encoded_data.count = 0;
+}
+
+/* DEBUG - DELETE! */
+static void print_binary(MachineWord word) {
+    int i;
+    for (i = WORD_SIZE - 1; i >= 0; i--) {
+        /* 15 bits, from MSB to LSB */
+        printf("%d", (word >> i) & 1);
+        if (i % 5 == 0 && i != 0) printf(" "); /* Space every 5 bits for readability */
+    }
 }

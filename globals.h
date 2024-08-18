@@ -33,6 +33,7 @@
 extern char string_table[MAX_STRINGS][MAX_STRING_LENGTH];
 extern int string_count;
 extern char current_filename[MAX_FILENAME_LENGTH];
+extern int memory_address;
 
 typedef enum {
     mov, cmp, add, sub, lea, clr, not, inc,
@@ -45,17 +46,6 @@ extern const char* OPCODE_NAMES[NUM_OPCODES];
 /* Assembler directives */
 #define NUM_DIRECTIVES 4
 extern const char* DIRECTIVE_NAMES[NUM_DIRECTIVES];
-
-// /* Error codes */
-// typedef enum {
-//     ERROR_NONE,
-//     ERROR_SYNTAX,
-//     ERROR_INVALID_LABEL,
-//     ERROR_INVALID_OPERAND,
-//     ERROR_INVALID_INSTRUCTION,
-//     ERROR_FILE_NOT_FOUND,
-//     ERROR_MEMORY_ALLOCATION
-// } ErrorCode;
 
 /* Register names */
 typedef enum {
