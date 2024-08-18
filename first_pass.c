@@ -88,6 +88,12 @@ static void process_line(char *line) {
             /* .entry directive */
             line += strlen(DIRECTIVE_NAMES[2]);
             skip_whitespace(&line);
+            /* Remove trailing whitespace */
+            end = line + strlen(line) - 1;
+            while (end > line && isspace((unsigned char)*end)) {
+                *end = '\0';
+                end--;
+            }
             add_entry(line);
         } else if (strncmp(line, DIRECTIVE_NAMES[3], strlen(DIRECTIVE_NAMES[3])) == 0) {
             /* .extern directive */

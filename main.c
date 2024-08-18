@@ -10,6 +10,7 @@
 #include "symbol_table.h"
 #include "globals.h"
 #include "encoder.h"
+#include "errors.h"
 
 char string_table[MAX_STRINGS][MAX_STRING_LENGTH];
 int string_count = 0;
@@ -24,6 +25,8 @@ static void process_file(const char *filename) {
     BaseFilename base_filename;
 
     printf("Processing file: %s\n", filename);
+
+    init_error_handling();
 
     /* Initialize macro storage */
     init_macros();
