@@ -1,6 +1,9 @@
 #include "utils.h"
+#include "errors.h"
+#include "globals.h"
 #include <ctype.h>
 #include <string.h>
+#include <limits.h>
 
 /*
  * Skips whitespace characters in the given string.
@@ -51,7 +54,7 @@ BaseFilename get_base_filename(const char* filename) {
 void* safe_malloc(size_t size) {
     void* ptr = malloc(size);
     if (ptr == NULL) {
-        fprintf(stderr, "Error: Memory allocation failed\n");
+        add_error(ERROR_MEMORY_ALLOCATION, current_filename, -1, "Memory allocation failed");
         exit(EXIT_FAILURE);
     }
     return ptr;
@@ -64,7 +67,7 @@ void* safe_malloc(size_t size) {
 void* safe_realloc(void* ptr, size_t size) {
     void* new_ptr = realloc(ptr, size);
     if (new_ptr == NULL) {
-        fprintf(stderr, "Error: Memory reallocation failed\n");
+        add_error(ERROR_MEMORY_ALLOCATION, current_filename, -1, "Memory reallocation failed");
         exit(EXIT_FAILURE);
     }
     return new_ptr;
@@ -78,7 +81,7 @@ void* safe_realloc(void* ptr, size_t size) {
 FILE* safe_fopen(const char* filename, const char* mode) {
     FILE* file = fopen(filename, mode);
     if (file == NULL) {
-        fprintf(stderr, "Error: Unable to open file '%s'\n", filename);
+        add_error(ERROR_FILE_NOT_FOUND, filename, -1, "Unable to open file '%s'", filename);
         exit(EXIT_FAILURE);
     }
     return file;
@@ -91,7 +94,7 @@ FILE* safe_fopen(const char* filename, const char* mode) {
 char* safe_fgets(char* str, int n, FILE* stream) {
     if (fgets(str, n, stream) == NULL) {
         if (ferror(stream)) {
-            fprintf(stderr, "Error: Failed to read from file\n");
+            add_error(ERROR_FILE_NOT_FOUND, current_filename, -1, "Failed to read from file");
             exit(EXIT_FAILURE);
         }
         return NULL;
@@ -108,18 +111,18 @@ int safe_atoi(const char* str) {
     long val = strtol(str, &endptr, 10);
 
     if (endptr == str) {
-        fprintf(stderr, "Error: No digits were found in '%s'\n", str);
-        exit(EXIT_FAILURE);
+        add_error(ERROR_INVALID_OPERAND, current_filename, current_line_number, "No digits were found in '%s'", str);
+        return 0;
     }
 
     if (*endptr != '\0') {
-        fprintf(stderr, "Error: Invalid character in '%s' after the number\n", str);
-        exit(EXIT_FAILURE);
+        add_error(ERROR_INVALID_OPERAND, current_filename, current_line_number, "Invalid character in '%s' after the number", str);
+        return 0;
     }
 
     if (val > INT_MAX || val < INT_MIN) {
-        fprintf(stderr, "Error: Number '%s' is out of range for an integer\n", str);
-        exit(EXIT_FAILURE);
+        add_error(ERROR_INVALID_OPERAND, current_filename, current_line_number, "Number '%s' is out of range for an integer", str);
+        return 0;
     }
 
     return (int)val;

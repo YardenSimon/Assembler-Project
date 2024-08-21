@@ -72,4 +72,5 @@ typedef enum {
     ARE_EXTERNAL = 1
 } AREType;
 
+extern int current_line_number;
 #endif /* GLOBALS_H */

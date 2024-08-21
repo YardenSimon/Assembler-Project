@@ -1,4 +1,5 @@
 #include "symbol_table.h"
+#include "errors.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -19,7 +20,7 @@ void init_symbol_table() {
     symbol_capacity = INITIAL_SYMBOL_CAPACITY;
     symbol_table = (Symbol *) calloc(symbol_capacity, sizeof(Symbol));
     if (symbol_table == NULL) {
-        fprintf(stderr, "Error: Memory allocation failed for symbol table\n");
+        add_error(ERROR_MEMORY_ALLOCATION, current_filename, -1, "Memory allocation failed for symbol table");
         exit(1);
     }
     symbol_count = 0;
@@ -42,7 +43,7 @@ void add_symbol(const char *name, int address) {
         symbol_capacity *= 2;
         temp = (Symbol *) realloc(symbol_table, symbol_capacity * sizeof(Symbol));
         if (temp == NULL) {
-            fprintf(stderr, "Error: Memory reallocation failed for symbol table\n");
+            add_error(ERROR_MEMORY_ALLOCATION, current_filename, -1, "Memory reallocation failed for symbol table");
             exit(1);
         }
         symbol_table = temp;

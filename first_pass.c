@@ -5,6 +5,7 @@
 #include "operand_validation.h"
 #include "globals.h"
 #include "entry_extern.h"
+#include "errors.h"
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
@@ -14,12 +15,13 @@ int IC = INITIAL_MEMORY_ADDRESS;
 int DC = 0;
 MachineWord *memory = NULL;
 int memory_size = 0;
+int current_line_number = 0;
 
 
-static void process_line(char *line);
-static void handle_label(char *line);
-static void handle_instruction(char *line);
-static void handle_directive(char *line);
+static void process_line(char *line, int line_number);
+static int handle_label(char *line, int line_number);
+static void handle_instruction(char *line, int line_number);
+static void handle_directive(char *line, int line_number);
 
 const char *DIRECTIVE_NAMES[NUM_DIRECTIVES] = {
     ".data", ".string", ".entry", ".extern"
@@ -30,16 +32,10 @@ const char *OPCODE_NAMES[NUM_OPCODES] = {
     "dec", "jmp", "bne", "red", "prn", "jsr", "rts", "stop"
 };
 
-/*
- * This function initiates the first pass of the assembler. It:
- * Opens the input file containing assembly code.
- * Initializes the memory array to store the program.
- * Processes the file line by line, calling process_line function for each line.
- */
 void perform_first_pass(const char *filename) {
     FILE *file;
     char line[MAX_LINE_LENGTH + 1];
-
+    current_line_number = 0;
     file = safe_fopen(filename, "r");
 
     IC = INITIAL_MEMORY_ADDRESS;
@@ -47,36 +43,34 @@ void perform_first_pass(const char *filename) {
 
     memory_size = MEMORY_SIZE;
     memory = (MachineWord *) safe_malloc(memory_size * sizeof(MachineWord *));
+    if (memory == NULL) {
+        add_error(ERROR_MEMORY_ALLOCATION, filename, current_line_number, "Failed to allocate memory");
+        return;
+    }
     memset(memory, 0, memory_size * sizeof(MachineWord *));
 
     init_symbol_table();
     init_entry_extern();
 
     while (safe_fgets(line, sizeof(line), file) != NULL) {
+        current_line_number++;
         line[strcspn(line, "\n")] = 0;
         if (line[0] == ';' || line[0] == '\0') continue;
-        process_line(line);
+        process_line(line, current_line_number);
         printf("\n");
     }
 
     fclose(file);
 }
 
-/*
- * This function analyzes each line of the input and:
- * Identifies and processes labels using handle_label.
- * Determines the type of the line (directive or instruction).
- * Calls appropriate handlers (handle_directive or handle_instruction).
- * Manages .extern directives by adding them to the symbol table.
- */
-static void process_line(char *line) {
-    char *original_line = line;
+static void process_line(char *line, int line_number) {
     char *end;
 
     skip_whitespace(&line);
-
     if (is_label(line)) {
-        handle_label(line);
+        if (!handle_label(line, line_number)) {
+            return;
+        }
         line = strchr(line, ':') + 1;
         skip_whitespace(&line);
     }
@@ -84,84 +78,98 @@ static void process_line(char *line) {
     /* Check if it's a directive line */
     if (strncmp(line, DIRECTIVE_NAMES[0], strlen(DIRECTIVE_NAMES[0])) == 0 ||
         strncmp(line, DIRECTIVE_NAMES[1], strlen(DIRECTIVE_NAMES[1])) == 0) {
-        handle_directive(line);
-        } else if (strncmp(line, DIRECTIVE_NAMES[2], strlen(DIRECTIVE_NAMES[2])) == 0) {
-            /* .entry directive */
-            line += strlen(DIRECTIVE_NAMES[2]);
-            skip_whitespace(&line);
-            /* Remove trailing whitespace */
-            end = line + strlen(line) - 1;
-            while (end > line && isspace((unsigned char)*end)) {
-                *end = '\0';
-                end--;
-            }
-            add_entry(line);
-        } else if (strncmp(line, DIRECTIVE_NAMES[3], strlen(DIRECTIVE_NAMES[3])) == 0) {
-            /* .extern directive */
-            line += strlen(DIRECTIVE_NAMES[3]);
-            skip_whitespace(&line);
-            /* Remove trailing whitespace */
-            end = line + strlen(line) - 1;
-            while (end > line && isspace((unsigned char)*end)) {
-                *end = '\0';
-                end--;
-            }
-            add_extern(line);
-        } else {
-            handle_instruction(line);
+        handle_directive(line, line_number);
+    } else if (strncmp(line, DIRECTIVE_NAMES[2], strlen(DIRECTIVE_NAMES[2])) == 0) {
+        /* .entry directive */
+        line += strlen(DIRECTIVE_NAMES[2]);
+        skip_whitespace(&line);
+        /* Remove trailing whitespace */
+        end = line + strlen(line) - 1;
+        while (end > line && isspace((unsigned char) *end)) {
+            *end = '\0';
+            end--;
         }
+        add_entry(line);
+    } else if (strncmp(line, DIRECTIVE_NAMES[3], strlen(DIRECTIVE_NAMES[3])) == 0) {
+        /* .extern directive */
+        line += strlen(DIRECTIVE_NAMES[3]);
+        skip_whitespace(&line);
+        /* Remove trailing whitespace */
+        end = line + strlen(line) - 1;
+        while (end > line && isspace((unsigned char) *end)) {
+            *end = '\0';
+            end--;
+        }
+        if (!is_valid_label_name(line)) {
+            add_error(ERROR_INVALID_LABEL, current_filename, line_number, "Invalid extern label name: %s", line);
+        } else if (is_label_name(line)) {
+            add_error(ERROR_SYMBOL_CONFLICT, current_filename, line_number,
+                      "Symbol already defined as a label: %s", line);
+        } else if (is_macro(line)) {
+            add_error(ERROR_SYMBOL_CONFLICT, current_filename, line_number,
+                      "Symbol already defined as a macro: %s", line);
+        } else {
+            add_extern(line);
+        }
+    } else {
+        handle_instruction(line, line_number);
+    }
 }
 
-/*
- * When a label is encountered, this function:
- * Extracts the label from the line.
- * Validates the label length to ensure it doesn't exceed the maximum allowed.
- * Adds the label to the symbol table with its current address (IC + DC).
- */
-static void handle_label(char *line) {
+static int handle_label(char *line, int line_number) {
     char label[MAX_LABEL_LENGTH + 1];
     char *colon = strchr(line, ':');
     size_t label_length = colon - line;
 
     if (label_length > MAX_LABEL_LENGTH) {
-        fprintf(stderr, "Error: Label too long\n");
-        return;
+        add_error(ERROR_INVALID_LABEL, current_filename, line_number, "Label too long: %.*s",
+                  (int) label_length, line);
+        return 0;
     }
 
     strncpy(label, line, label_length);
     label[label_length] = '\0';
-    add_symbol(label, memory_address);
 
-    /* Move the line pointer after the label */
-    line = colon + 1;
-    skip_whitespace(&line);
+    if (!is_valid_label_name(label)) {
+        add_error(ERROR_INVALID_LABEL, current_filename, line_number, "Invalid label name: %s", label);
+        return 0;
+    }
+
+    if (is_reserved_word(label)) {
+        add_error(ERROR_RESERVED_WORD_AS_LABEL, current_filename, line_number,
+                  "Reserved word used as label: %s", label);
+        return 0;
+    }
+
+    if (is_label_name(label)) {
+        add_error(ERROR_DUPLICATE_LABEL_DEFINITION, current_filename, line_number,
+                  "Duplicate label definition: %s", label);
+        return 0;
+    }
+
+    if (is_macro(label)) {
+        add_error(ERROR_SYMBOL_CONFLICT, current_filename, line_number,
+                  "Label name conflicts with macro name: %s", label);
+        return 0;
+    }
+
+    add_symbol(label, memory_address);
+    return 1;
 }
 
-/*
- * This function processes assembly instructions:
- * Validates the instruction using find_command to ensure it's a recognized opcode.
- * If valid, calls encode_instruction to convert the instruction to machine code..
- */
-static void handle_instruction(char *line) {
+static void handle_instruction(char *line, int line_number) {
     OpCode command = find_command(line);
 
     /* Check if the instruction is valid */
     if (command == -1) {
-        fprintf(stderr, "Error: Invalid instruction: %s\n", line);
+        add_error(ERROR_INVALID_INSTRUCTION, current_filename, line_number, "Invalid instruction: %s", line);
         return;
     }
 
     encode_instruction(line, command);
 }
 
-/*
- * This function processes assembler directives such as .data and .string:
- * For .data: Parses numbers from the line, allocates memory for each, and stores them in the data section.
- * For .string: Allocates memory for each character in the string, storing their ASCII values.
- * Adds a null terminator for strings to mark the end of the string.
- * Updates the Data Counter (DC) accordingly.
- */
-static void handle_directive(char *line) {
+static void handle_directive(char *line, int line_number) {
     int value;
     char *endptr;
     /* int words_encoded; - UNUSED - CHECK!!!!!!!!!!!!!!!*/
@@ -178,7 +186,7 @@ static void handle_directive(char *line) {
 
             value = (int) strtol(line, &endptr, 10);
             if (line == endptr) {
-                fprintf(stderr, "Error: Invalid number in .data directive\n");
+                add_error(ERROR_INVALID_OPERAND, current_filename, line_number, "Invalid number in .data directive");
                 return;
             }
             line = endptr;
@@ -190,7 +198,7 @@ static void handle_directive(char *line) {
         line += 7;
         skip_whitespace(&line);
         if (*line != '"') {
-            fprintf(stderr, "Error: String must start with a quote\n");
+            add_error(ERROR_INVALID_OPERAND, current_filename, line_number, "String must start with a quote");
             return;
         }
         encode_directive(".string", line);
@@ -202,10 +210,6 @@ static void handle_directive(char *line) {
     }
 }
 
-/*
- * This function frees the memory allocated during the first pass.
- * It resets the memory pointer and counters (IC and DC) to their initial values.
- */
 void free_memory(void) {
     if (memory != NULL) {
         free(memory);

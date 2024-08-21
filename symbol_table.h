@@ -14,7 +14,7 @@ extern Symbol* symbol_table;
 extern int symbol_count;
 
 
-void init_symbol_table(void);
+void init_symbol_table();
 void add_symbol(const char* name, int address);
 Symbol* get_symbol_by_name(const char* name);
 void free_symbol_table(void);

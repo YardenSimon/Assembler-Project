@@ -3,6 +3,7 @@
 #include "opcode_groups.h"
 #include "encoder.h"
 #include "globals.h"
+#include "errors.h"
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
@@ -34,32 +35,6 @@ const OpcodeAddressing opcode_addressing[NUM_OPCODES] = {
     {0, 0} /* stop - source: null;    dest: null */
 };
 
-/*
- * Validates whether a given addressing method is allowed for a specific operand
- * of an opcode.
- * Returns:
- * - 1 if the addressing method is allowed for the operand.
- * - 0 if it is not allowed or if the opcode is invalid.
- */
-int validate_operand_addressing(OpCode opcode, int is_source, int method) {
-    unsigned char allowed;
-
-    printf("DEBUG: Validating operand addressing - Opcode: %s, Is source: %d, Method: %d\n",
-           OPCODE_NAMES[opcode], is_source, method);
-
-    if (opcode < 0 || opcode >= NUM_OPCODES) {
-        return 0;
-    }
-
-    if (is_source) {
-        allowed = opcode_addressing[opcode].source_allowed;
-    } else {
-        allowed = opcode_addressing[opcode].dest_allowed;
-    }
-
-    printf("DEBUG: Operand addressing validation result: %d\n", (allowed & (1 << method)) != 0);
-    return (allowed & (1 << method)) != 0;
-}
 
 /*
  * Finds and returns the opcode corresponding to the command found in a given line.
@@ -128,29 +103,6 @@ int is_label(const char *str) {
     return (str[i] == ':' && label_length > 0);
 }
 
-/*
- * Checks if the given string is a valid label operand.
- * A valid label operand contains only alphanumeric characters and has a length
- * greater than zero.
- */
-int is_valid_label_operand(const char *str) {
-    int i = 0;
-    int label_length = 0;
-
-    printf("DEBUG: Checking if '%s' is a valid label operand\n", str);
-
-    if (!isalpha((int) str[i])) return 0;
-
-    while (str[i]) {
-        if (!isalnum((int) str[i])) return 0;
-        i++;
-        label_length++;
-        if (label_length > MAX_LABEL_LENGTH) return 0;
-    }
-
-    printf("DEBUG: Valid label operand check result: %d\n", (label_length > 0));
-    return (label_length > 0);
-}
 
 /* Validates whether a given operand is valid for the specified opcode.*/
 int validate_operand(const char *op, OpCode opcode, int is_source) {
@@ -167,6 +119,7 @@ int validate_operand(const char *op, OpCode opcode, int is_source) {
     method = get_addressing_method(op);
     if (method == -1) {
         printf("DEBUG: Invalid addressing method\n");
+        add_error(ERROR_INVALID_OPERAND, current_filename, current_line_number, "Invalid addressing method for operand: %s", op);
         return 0;
     }
 
@@ -179,11 +132,13 @@ int validate_operand(const char *op, OpCode opcode, int is_source) {
     if (is_source) {
         if (!(opcode_addressing[opcode].source_allowed & (1 << (method - 1)))) {
             printf("DEBUG: Invalid source addressing method for opcode\n");
+            add_error(ERROR_INVALID_OPERAND, current_filename, current_line_number, "Invalid source addressing method for opcode: %s", OPCODE_NAMES[opcode]);
             return 0;
         }
     } else {
         if (!(opcode_addressing[opcode].dest_allowed & (1 << (method - 1)))) {
             printf("DEBUG: Invalid destination addressing method for opcode\n");
+            add_error(ERROR_INVALID_OPERAND, current_filename, current_line_number, "Invalid destination addressing method for opcode: %s", OPCODE_NAMES[opcode]);
             return 0;
         }
     }
@@ -192,20 +147,6 @@ int validate_operand(const char *op, OpCode opcode, int is_source) {
     return 1;
 }
 
-/* Counts the number of operands in a given line. CONSIDER TO DELETE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
-int count_operands(const char *line) {
-    int count = 0;
-    printf("DEBUG: Counting operands in line: '%s'\n", line);
-
-    if (strchr(line, ',') != NULL) {
-        count = 2;
-    } else if (strchr(line, ' ') != NULL) {
-        count = 1;
-    }
-
-    printf("DEBUG: Operand count: %d\n", count);
-    return count;
-}
 
 /* Extracts the opcode and operands from a given line of text. */
 void extract_operands(const char *line, char *opcode, char *first_operand, char *second_operand) {
@@ -226,6 +167,7 @@ void extract_operands(const char *line, char *opcode, char *first_operand, char 
         opcode[length] = '\0';
     } else {
         printf("DEBUG: No opcode found\n");
+        add_error(ERROR_INVALID_INSTRUCTION, current_filename, current_line_number, "No opcode found in instruction");
         return;
     }
 
@@ -259,48 +201,4 @@ void extract_operands(const char *line, char *opcode, char *first_operand, char 
            opcode, first_operand, second_operand);
 }
 
-/* Validates an entire instruction line, including the opcode and operands. */
-int validate_instruction(const char *line) {
-    /*NOT IN USE - CONSIDER DELETE COUNT_OPERAND AS WELL!!!!!!!!!!!!!!!!!!!!!!!!*/
-    char opcode[MAX_OPERANDS] = {0};
-    char first_operand[MAX_OPERANDS] = {0};
-    char second_operand[MAX_OPERANDS] = {0};
-    OpCode opcode_value;
-    int operand_count;
-    int expected_count;
 
-    printf("DEBUG: Validating instruction: '%s'\n", line);
-
-    opcode_value = find_command(line);
-    if (opcode_value == (OpCode) -1) {
-        printf("DEBUG: Invalid opcode\n");
-        return 0;
-    }
-
-    extract_operands(line, opcode, first_operand, second_operand);
-    operand_count = (*first_operand != '\0') + (*second_operand != '\0');
-
-    printf("DEBUG: Extracted operands - First: '%s', Second: '%s', Count: %d\n",
-           first_operand, second_operand, operand_count);
-
-    expected_count = count_operands(line);
-    printf("DEBUG: Expected operand count: %d, Actual count: %d\n", expected_count, operand_count);
-
-    if (operand_count != expected_count) {
-        printf("DEBUG: Operand count mismatch\n");
-        return 0;
-    }
-
-    if (operand_count >= 1 && !validate_operand(first_operand, opcode_value, 1)) {
-        printf("DEBUG: Invalid first operand\n");
-        return 0;
-    }
-
-    if (operand_count == 2 && !validate_operand(second_operand, opcode_value, 0)) {
-        printf("DEBUG: Invalid second operand\n");
-        return 0;
-    }
-
-    printf("DEBUG: Instruction validated successfully\n");
-    return 1;
-}

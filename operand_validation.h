@@ -17,6 +17,5 @@ int count_operands(const char* line);
 void extract_operands(const char* line, char* opcode, char* first_operand, char* second_operand);
 int validate_instruction(const char* line);
 
-
-
 #endif
+

@@ -1,5 +1,3 @@
-/* main.c */
-
 #include "utils.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -18,7 +16,6 @@ char current_filename[MAX_FILENAME_LENGTH] = {0};
 
 void print_memory_after_first_pass(void);
 
-
 /* Function to process a single input file */
 static void process_file(const char *filename) {
     char am_filename[MAX_FILENAME_LENGTH];
@@ -34,6 +31,15 @@ static void process_file(const char *filename) {
     /* Replace macros and create .am file */
     replace_macros(filename);
 
+    /* Check for macro-related errors */
+    if (has_errors()) {
+        print_errors();
+        printf("Errors encountered during macro processing of %s. Assembly aborted.\n", filename);
+        free_macros();
+        free_error_handling();
+        return;
+    }
+
     base_filename = get_base_filename(filename);
 
     strncpy(am_filename, base_filename.name, base_filename.length);
@@ -47,27 +53,36 @@ static void process_file(const char *filename) {
     /* Perform first pass on .am file */
     perform_first_pass(am_filename);
 
+    if (has_errors()) {
+        print_errors();
+        printf("Errors encountered during first pass of %s. Assembly aborted.\n", filename);
+        free_encoded_data();
+        free(base_filename.name);
+        free_macros();
+        return;
+    }
+
     add_encoded_data_to_memory();
-
-/* DELETE LATER - FOR DEBOG UNLY!!!!!!!!!!!!*/
     print_memory_after_first_pass();
-    print_symbol_table();
-
     /* Perform second pass on .am file */
     perform_second_pass(am_filename);
 
-    printf("Assembly completed for file: %s\n", filename);
+    if (has_errors()) {
+        print_errors();
+        printf("Errors encountered during assembly of %s\n", filename);
+    } else {
+        printf("Assembly completed successfully for file: %s\n", filename);
+    }
+
     free_encoded_data();
-    /* Free allocated resources */
     free(base_filename.name);
     free_macros();
 }
 
-
 /* Main function of the assembler */
 int main(int argc, char *argv[]) {
     int i;
-
+    printf("RUNNING MAIN");
     if (argc < 2) {
         fprintf(stderr, "Usage: %s <input_file1.as> [input_file2.as ...]\n", argv[0]);
         return 1;
@@ -76,13 +91,22 @@ int main(int argc, char *argv[]) {
     for (i = 1; i < argc; i++) {
         process_file(argv[i]);
     }
+
     free_memory();
     free_symbol_table();
-    return 0;
+
+    if (has_errors()) {
+        printf("Assembly completed with errors.\n");
+        free_error_handling();
+        return 1;
+    } else {
+        printf("Assembly completed successfully for all files.\n");
+        free_error_handling();
+        return 0;
+    }
 }
 
-#include <stdio.h>
-
+/* Debug function - can be removed in final version */
 void print_memory_after_first_pass() {
     int i;
     MachineWord word;

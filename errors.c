@@ -7,6 +7,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <ctype.h>
+#include <limits.h>
 
 static ErrorNode* error_list_head = NULL;
 static ErrorNode* error_list_tail = NULL;
@@ -36,7 +37,7 @@ void add_error(ErrorType type, const char* filename, int line, const char* forma
     new_error->filename[sizeof(new_error->filename) - 1] = '\0';
 
     va_start(args, format);
-    vsnprintf(new_error->message, sizeof(new_error->message), format, args);
+    vsprintf(new_error->message, format, args);
     va_end(args);
 
     new_error->next = NULL;

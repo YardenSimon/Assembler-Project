@@ -1,6 +1,7 @@
 #include "macros.h"
 #include "utils.h"
 #include "globals.h"
+#include "errors.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -103,7 +104,7 @@ static int handle_macro_start(char *line, char *macro_name, int line_number) {
     macro_result = sscanf(line, "%*s %s", macro_name);
     if (macro_result != 1 || !can_be_macro_name(macro_name)) {
         /* Invalid macro name */
-        fprintf(stderr, "Error: Invalid macro name at line %d\n", line_number);
+        add_error(ERROR_INVALID_MACRO_DEFINITION, current_filename, line_number, "Invalid macro name");
         return 0;
     }
     return 1;
@@ -196,7 +197,7 @@ static void process_macros(const char *input_name, const char *output_name) {
         /*FIRST WORD WAS HERE BEFORE!!!!!!!!!!!!!!!!!!*/
         if (strcmp(first_word, "macr") == 0) {
             if (in_macro_definition) {
-                fprintf(stderr, "Error: Nested macro definition at line %d\n", line_number);
+                add_error(ERROR_INVALID_MACRO_DEFINITION, input_name, line_number, "Nested macro definition");
             } else if (handle_macro_start(line, macro_name, line_number)) {
                 in_macro_definition = 1;
                 macro_content = (char *) safe_malloc(1);
@@ -204,7 +205,7 @@ static void process_macros(const char *input_name, const char *output_name) {
             }
         } else if (strcmp(first_word, "endmacr") == 0) {
             if (!in_macro_definition) {
-                fprintf(stderr, "Error: Unexpected 'endmacr' at line %d\n", line_number);
+                add_error(ERROR_INVALID_MACRO_DEFINITION, input_name, line_number, "Unexpected 'endmacr'");
             } else {
                 handle_macro_end(macro_name, &macro_content);
                 in_macro_definition = 0;
@@ -218,7 +219,7 @@ static void process_macros(const char *input_name, const char *output_name) {
     }
 
     if (in_macro_definition) {
-        fprintf(stderr, "Error: Macro '%s' not closed at end of file\n", macro_name);
+        add_error(ERROR_INVALID_MACRO_DEFINITION, input_name, line_number, "Macro '%s' not closed at end of file", macro_name);
         free(macro_content);
     }
 

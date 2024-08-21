@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
+
 
 extern int IC;
 extern int DC;
@@ -73,7 +73,7 @@ static void update_symbol_addresses(void) {
         if ((word & 3) == ARE_RELOCATABLE) {
             string_index = word >> 2;
             printf("DEBUG: Processing word at address %d, string index: %d\n", i + INITIAL_MEMORY_ADDRESS, string_index);
-            if (string_index < string_count) {
+            if (string_index <= string_count) {
                 printf("DEBUG: Looking up symbol: '%s'\n", string_table[string_index]);
                 symbol = get_symbol_by_name(string_table[string_index]);
                 if (symbol != NULL) {
@@ -112,10 +112,13 @@ static void update_symbol_addresses(void) {
     for (i = 0; i < entry_count; i++) {
         symbol = get_symbol_by_name(entries[i].name);
         if (symbol != NULL) {
-            set_entry_address(entries[i].name, symbol->address);
+            if (symbol->is_external) {
+                add_error(ERROR_ENTRY_EXTERN_CONFLICT, current_filename, -1, "Symbol '%s' defined as both entry and extern", entries[i].name);
+            } else {
+                set_entry_address(entries[i].name, symbol->address);
+            }
         } else {
-            add_error(ERROR_UNDEFINED_LABEL, current_filename, -1,
-                      "Entry symbol '%s' not found in symbol table", entries[i].name);
+            add_error(ERROR_UNDEFINED_LABEL, current_filename, -1, "Entry symbol '%s' not found in symbol table", entries[i].name);
         }
     }
 }
@@ -141,9 +144,25 @@ static void write_object_file(const char *filename) {
     char ob_filename[MAX_FILENAME_LENGTH];
     FILE *ob_file;
     int i;
+    size_t filename_len, ext_len;
 
-    sprintf(ob_filename, "%s%s", filename, OBJECT_FILE_EXT);
+    filename_len = strlen(filename);
+    ext_len = strlen(OBJECT_FILE_EXT);
+
+    /* Ensure we don't overflow ob_filename */
+    if (filename_len + ext_len < MAX_FILENAME_LENGTH) {
+        strcpy(ob_filename, filename);
+        strcat(ob_filename, OBJECT_FILE_EXT);
+    } else {
+        add_error(ERROR_FILE_NOT_FOUND, filename, -1, "Filename too long for object file");
+        return;
+    }
+
     ob_file = safe_fopen(ob_filename, "w");
+    if (ob_file == NULL) {
+        add_error(ERROR_FILE_NOT_FOUND, ob_filename, -1, "Unable to create object file");
+        return;
+    }
 
     fprintf(ob_file, "  %d %d\n", IC - INITIAL_MEMORY_ADDRESS, DC);
 
@@ -185,17 +204,32 @@ static void write_entries_file(const char *filename) {
     char ent_filename[MAX_FILENAME_LENGTH];
     FILE *ent_file = NULL;
     int i;
+    size_t filename_len, ext_len;
 
     if (entry_count > 0) {
-        snprintf(ent_filename, sizeof(ent_filename), "%s%s", filename, ENTRIES_FILE_EXT);
+        filename_len = strlen(filename);
+        ext_len = strlen(ENTRIES_FILE_EXT);
+
+        if (filename_len + ext_len < MAX_FILENAME_LENGTH) {
+            strcpy(ent_filename, filename);
+            strcat(ent_filename, ENTRIES_FILE_EXT);
+        } else {
+            add_error(ERROR_FILE_NOT_FOUND, filename, -1, "Filename too long for entries file");
+            return;
+        }
+
         ent_file = safe_fopen(ent_filename, "w");
+        if (ent_file == NULL) {
+            add_error(ERROR_FILE_NOT_FOUND, ent_filename, -1, "Unable to create entries file");
+            return;
+        }
 
         for (i = 0; i < entry_count; i++) {
             if (entries[i].address != -1) {
                 fprintf(ent_file, "%s %04d\n", entries[i].name, entries[i].address);
                 printf("DEBUG: Wrote entry symbol %s at address %04d\n", entries[i].name, entries[i].address);
             } else {
-                fprintf(stderr, "Error: Entry symbol '%s' has no address\n", entries[i].name);
+                add_error(ERROR_UNDEFINED_LABEL, filename, -1, "Entry symbol '%s' has no address", entries[i].name);
             }
         }
 

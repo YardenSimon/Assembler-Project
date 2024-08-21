@@ -16,7 +16,7 @@ int extern_use_count = 0;
 
 /*
  * Initialize entry and extern symbol counts to zero.
- * This function is typically called at the start of the program
+ * This function is called at the start of the program
  * to ensure that the symbol tables are empty before use.
  */
 void init_entry_extern(void) {
@@ -24,6 +24,11 @@ void init_entry_extern(void) {
     extern_count = 0;
 }
 
+/*
+ * Initialize memory to save all uses of externals and counts them.
+ * This function is called at the start of the seconds pass
+ * so at the end of it we can create the .ext file.
+ */
 void init_extern_uses(void) {
     extern_uses = (ExternUse *)safe_malloc(MAX_EXTERN_USES * sizeof(ExternUse));
     extern_use_count = 0;
@@ -42,7 +47,7 @@ void add_entry(const char* name) {
         entries[entry_count].address = -1;
         entry_count++;
     } else {
-        fprintf(stderr, "Error: Too many entry symbols\n");
+        add_error(ERROR_INVALID_OPERAND, current_filename, -1, "Too many entry symbols");
     }
 }
 
@@ -59,10 +64,11 @@ void add_extern(const char* name) {
         extern_count++;
         printf("DEBUG: Added extern %s, total externs: %d\n", name, extern_count);
     } else {
-        fprintf(stderr, "Error: Too many extern symbols\n");
+        add_error(ERROR_INVALID_OPERAND, current_filename, -1, "Too many extern symbols");
     }
 }
 
+/* Adds an occurrence of an extern to the exter uses array*/
 void add_extern_use(const char* name, int address) {
     if (extern_use_count < MAX_EXTERN_USES) {
         strncpy(extern_uses[extern_use_count].name, name, MAX_SYMBOL_LENGTH - 1);
@@ -89,7 +95,7 @@ void set_entry_address(const char* name, int address) {
             return;
         }
     }
-    fprintf(stderr, "Error: Entry symbol '%s' not found\n", name);
+    add_error(ERROR_UNDEFINED_LABEL, current_filename, -1, "Entry symbol '%s' not found", name);
 }
 
 /* Free extern_uses array

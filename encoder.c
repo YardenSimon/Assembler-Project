@@ -2,6 +2,7 @@
 #include "operand_validation.h"
 #include "utils.h"
 #include "globals.h"
+#include "errors.h"
 #include <string.h>
 #include <stdio.h>
 #include <ctype.h>
@@ -32,7 +33,6 @@ const OpcodeInfo opcodes[NUM_OPCODES] = {
 };
 
 
-/*static OpCode get_opcode_value(const char *opcode_name); UNUSED FUNC!!!!!!!!!!!!!*/
 static void encode_operand(AddressingMethod method, const char *operand, int is_source);
 static void encode_register_operands(const char *source, const char *destination);
 static void print_binary(MachineWord word);
@@ -53,6 +53,10 @@ void init_encoded_data(void) {
  */
 static void add_to_encoded_data(MachineWord word) {
     EncodedDataNode *new_node = (EncodedDataNode *)safe_malloc(sizeof(EncodedDataNode));
+    if (new_node == NULL) {
+        add_error(ERROR_MEMORY_ALLOCATION, current_filename, current_line_number, "Unable to allocate memory for encoded data");
+        return;
+    }
     new_node->word = word;
     new_node->next = NULL;
 
@@ -105,7 +109,7 @@ void encode_instruction(const char *instruction, OpCode command_name) {
 
     if (!validate_operand(source, opcode_value, src_method) ||
         (destination[0] != '\0' && !validate_operand(destination, opcode_value, 0))) {
-        fprintf(stderr, "Error: Invalid operand(s) in instruction: %s\n", instruction);
+        add_error(ERROR_INVALID_OPERAND, current_filename, current_line_number, "Invalid operand(s) in instruction: %s", instruction);
         return;
     }
 
@@ -228,7 +232,7 @@ void encode_directive(const char *directive, const char *operands) {
 
             value = strtol(operands, &endptr, 10);
             if (operands == endptr) {
-                fprintf(stderr, "Error: Invalid number in .data directive\n");
+                add_error(ERROR_INVALID_OPERAND, current_filename, current_line_number, "Invalid number in .data directive");
                 return;
             }
             /* Encode the value into 15 bits */
@@ -242,7 +246,7 @@ void encode_directive(const char *directive, const char *operands) {
         }
     } else if (strcmp(directive, ".string") == 0) {
         if (*operands != '"') {
-            fprintf(stderr, "Error: String must start with a quote\n");
+            add_error(ERROR_INVALID_OPERAND, current_filename, current_line_number, "String must start with a quote");
             return;
         }
         operands++;
@@ -257,7 +261,7 @@ void encode_directive(const char *directive, const char *operands) {
             operands++;
         }
         if (*operands != '"') {
-            fprintf(stderr, "Error: String must end with a quote\n");
+            add_error(ERROR_INVALID_OPERAND, current_filename, current_line_number, "String must end with a quote");
             return;
         }
         add_to_encoded_data(0);
@@ -267,7 +271,7 @@ void encode_directive(const char *directive, const char *operands) {
         print_binary(0);
         printf("\n");
     } else {
-        fprintf(stderr, "Error: Unknown directive %s\n", directive);
+        add_error(ERROR_INVALID_INSTRUCTION, current_filename, current_line_number, "Unknown directive %s", directive);
     }
 }
 
@@ -323,7 +327,7 @@ static void encode_operand(AddressingMethod method, const char *operand, int is_
                 encoded_operand = (string_count << 2) | ARE_RELOCATABLE;
                 string_count++;
             } else {
-                fprintf(stderr, "Error: String table full\n");
+                add_error(ERROR_MEMORY_ALLOCATION, current_filename, current_line_number, "String table full");
                 return;
             }
             break;
@@ -338,7 +342,7 @@ static void encode_operand(AddressingMethod method, const char *operand, int is_
             encoded_operand |= ARE_ABSOLUTE;
             break;
         default:
-            fprintf(stderr, "Error: Unknown addressing method\n");
+            add_error(ERROR_INVALID_OPERAND, current_filename, current_line_number, "Unknown addressing method");
             return;
     }
 
