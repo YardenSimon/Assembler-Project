@@ -34,6 +34,7 @@ static void process_file(const char *filename) {
     if (has_errors()) {
         file_has_errors = 1;
         printf("Errors encountered during macro processing of %s. Continuing assembly.\n", filename);
+	return;
     }
 
     base_filename = get_base_filename(filename);
