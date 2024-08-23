@@ -16,12 +16,8 @@ int DC = 0;
 MachineWord *memory = NULL;
 int memory_size = 0;
 int current_line_number = 0;
-
-
-static void process_line(char *line, int line_number);
-static int handle_label(char *line, int line_number);
-static void handle_instruction(char *line, int line_number);
-static void handle_directive(char *line, int line_number);
+DataSection data_sections[MAX_DATA_SECTIONS];
+int data_section_count = 0;
 
 const char *DIRECTIVE_NAMES[NUM_DIRECTIVES] = {
     ".data", ".string", ".entry", ".extern"
@@ -31,6 +27,44 @@ const char *OPCODE_NAMES[NUM_OPCODES] = {
     "mov", "cmp", "add", "sub", "lea", "clr", "not", "inc",
     "dec", "jmp", "bne", "red", "prn", "jsr", "rts", "stop"
 };
+
+/*
+ * Processes a single line of assembly code.
+ * This function determines if the line contains a label, directive, or instruction and handles it accordingly.
+ */
+static void process_line(char *line, int line_number);
+
+/*
+ * Handles a label in the assembly code.
+ * This function checks if the label is valid, adds it to the symbol table, and ensures it doesn't conflict with reserved words or macros.
+ * It returns 1 if the label is valid and added successfully, 0 otherwise.
+ */
+static int handle_label(char *line, int line_number);
+
+/*
+ * Handles an instruction in the assembly code.
+ * This function identifies the instruction and encodes it into machine code.
+ * If the instruction is invalid, an error is logged.
+ */
+static void handle_instruction(char *line, int line_number);
+
+/*
+ * This function deals with special instructions in the assembly code, like storing numbers or text.
+ * It saves these values in memory and keeps track of where this data is stored.
+ */
+static void handle_directive(char *line, int line_number);
+
+
+void add_data_section(int start_address, int end_address) {
+    if (data_section_count < MAX_DATA_SECTIONS) {
+        data_sections[data_section_count].start_address = start_address;
+        data_sections[data_section_count].end_address = end_address;
+        data_section_count++;
+    } else {
+        add_error(ERROR_MEMORY_ALLOCATION, current_filename, current_line_number,
+                  "Too many data sections. Maximum allowed: %d", MAX_DATA_SECTIONS);
+    }
+}
 
 void perform_first_pass(const char *filename) {
     FILE *file;
@@ -83,7 +117,6 @@ static void process_line(char *line, int line_number) {
         /* .entry directive */
         line += strlen(DIRECTIVE_NAMES[2]);
         skip_whitespace(&line);
-        /* Remove trailing whitespace */
         end = line + strlen(line) - 1;
         while (end > line && isspace((unsigned char) *end)) {
             *end = '\0';
@@ -94,7 +127,6 @@ static void process_line(char *line, int line_number) {
         /* .extern directive */
         line += strlen(DIRECTIVE_NAMES[3]);
         skip_whitespace(&line);
-        /* Remove trailing whitespace */
         end = line + strlen(line) - 1;
         while (end > line && isspace((unsigned char) *end)) {
             *end = '\0';
@@ -160,25 +192,21 @@ static int handle_label(char *line, int line_number) {
 static void handle_instruction(char *line, int line_number) {
     OpCode command = find_command(line);
 
-    /* Check if the instruction is valid */
     if (command == -1) {
         add_error(ERROR_INVALID_INSTRUCTION, current_filename, line_number, "Invalid instruction: %s", line);
         return;
     }
-
     encode_instruction(line, command);
 }
 
 static void handle_directive(char *line, int line_number) {
     int value;
     char *endptr;
-    /* int words_encoded; - UNUSED - CHECK!!!!!!!!!!!!!!!*/
-    /* Buffer to hold string representation of value */
     char value_str[20];
+    int start_address, end_address;
 
-
-    /* .data directive */
     if (strncmp(line, ".data", 5) == 0) {
+        start_address = memory_address;
         line += 5;
         while (*line) {
             while (isspace((unsigned char) *line) || *line == ',') line++;
@@ -193,8 +221,10 @@ static void handle_directive(char *line, int line_number) {
             sprintf(value_str, "%d", value);
             encode_directive(".data", value_str);
         }
+        end_address = memory_address - 1;
+        add_data_section(start_address, end_address);
     } else if (strncmp(line, ".string", 7) == 0) {
-        /* .string directive */
+        start_address = memory_address;
         line += 7;
         skip_whitespace(&line);
         if (*line != '"') {
@@ -207,6 +237,8 @@ static void handle_directive(char *line, int line_number) {
             DC++;
             line++;
         }
+        end_address = memory_address - 1;
+        add_data_section(start_address, end_address);
     }
 }
 

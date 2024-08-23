@@ -1,4 +1,3 @@
-
 #ifndef UTILS_H
 #define UTILS_H
 
@@ -11,24 +10,35 @@ typedef struct {
 } BaseFilename;
 
 
-/* Function to skip whitespace in a string */
+/* Skips whitespace characters in the given string.
+ * Moves the string pointer forward past any whitespace characters. */
 void skip_whitespace(char** str);
 
-/* Function to get the base filename without extension */
+/* Extracts the base filename (excluding path and extension) from a full filename.
+ * Allocates memory for the base name and returns it along with its length. */
 BaseFilename get_base_filename(const char* filename);
 
-/* Function for safe memory allocation */
+/*  Safely allocates memory of the specified size.
+ * Exits the program if memory allocation fails. */
 void* safe_malloc(size_t size);
 
-void* safe_realloc(void* ptr, size_t size);
-
-/* Function for safe file opening */
+/* Safely opens a file with the given filename and mode.
+ * Exits the program if the file cannot be opened.  */
 FILE* safe_fopen(const char* filename, const char* mode);
 
-/* Function to safely read a line from a file */
+/* Safely reads a line from a file into the provided buffer.
+ * Exits the program if reading from the file fails.*/
 char* safe_fgets(char* str, int n, FILE* stream);
 
-/* Function to safely convert a string to an integer */
+/* Converts a string to an integer.
+ * Checks for errors in conversion and range, and exits the program if errors are found. */
 int safe_atoi(const char* str);
 
-#endif /* UTILS_H */
+/* Checks if an address is in the data section.
+ * It looks through all data sections to see if the address fits in any of them.
+ * Returns 1 if the address is in a data section, 0 if not.
+ */
+
+int is_data_address(int address);
+
+#endif

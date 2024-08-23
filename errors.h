@@ -26,43 +26,50 @@ typedef struct ErrorNode {
     struct ErrorNode* next;
 } ErrorNode;
 
-/* Initialize the error handling system */
+/* Initializes the error handling system by setting up an empty linked list
+*  for storing errors. This function should be called at the start of the
+*  assembly process to ensure a clean slate for error tracking.
+*/
 void init_error_handling(void);
 
-/* Add an error to the list */
+/* This function adds a new error to the list of errors. It does this by creating a new error entry,
+ * filling it with the provided details (like the type of error, file name, and line number),
+ * and then adding it to the list.
+ * The function can handle different error messages by using flexible arguments.
+ * If there's a problem with memory allocation, the program will stop and show an error message.
+ */
 void add_error(ErrorType type, const char* filename, int line, const char* format, ...);
 
-/* Print all errors */
+/* This function prints all the errors that have been collected.
+ * It goes through the list of errors, formats each one, and prints it to the standard error output (stderr).
+ * Before printing, it converts the error type into a readable message.
+*/
 void print_errors(void);
-
-/* Get the total number of errors encountered */
-int get_error_count(void);
 
 /* Check if there are any errors */
 int has_errors(void);
 
-/* Free any resources used by the error handling system */
+/* This function releases all the memory used for error handling.
+ * It should be called at the end of the assembly process to clean up.
+ * The function goes through the list of errors, frees each one, and resets all the error-related variables.*/
 void free_error_handling(void);
 
-/* Check if a word is a reserved word (instruction, register, etc.) */
+/* This function checks if a specific word is a reserved word in the assembly language, like an opcode, directive, or register name.
+ * The function compares the word to a list of opcodes, directives, and register names (like r0 to r7).
+ */
 int is_reserved_word(const char* word);
 
-/* Check if a symbol is already defined as a label */
+/* Check if a symbol is defined as a label in the symbol table */
 int is_label_name(const char* symbol);
 
-/* Check if a symbol is already defined as a macro */
+/* Check if a symbol is defined as a macro */
 int is_macro(const char* symbol);
 
-/* Check if a symbol is defined as both entry and extern */
-int is_entry_extern_conflict(const char* symbol);
 
-/* Validate a label name */
+/* This function checks if a string is a valid label name based on assembly language rules.
+ * A valid label must start with a letter, only include letters and numbers,
+ * and not be longer than the allowed maximum length. */
 int is_valid_label_name(const char* label);
 
-/* Check if a symbol is defined as extern */
-int is_extern(const char* symbol);
 
-/* Check if a symbol is defined as entry */
-int is_entry(const char* symbol);
-
-#endif /* ERRORS_H */
+#endif

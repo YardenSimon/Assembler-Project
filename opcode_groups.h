@@ -1,5 +1,6 @@
 #ifndef OPCODE_GROUPS_H
 #define  OPCODE_GROUPS_H
+
 /* Two operand opcodes */
 #define TWO_OPERAND_COUNT 5
 static const char* two_operand_opcodes[TWO_OPERAND_COUNT] = {

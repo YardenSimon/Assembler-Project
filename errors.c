@@ -7,25 +7,22 @@
 #include <stdarg.h>
 #include <string.h>
 #include <ctype.h>
-#include <limits.h>
 
-static ErrorNode* error_list_head = NULL;
-static ErrorNode* error_list_tail = NULL;
+static ErrorNode *error_list_head = NULL;
+static ErrorNode *error_list_tail = NULL;
 static int error_count = 0;
 
-void init_error_handling(void)
-{
+void init_error_handling(void) {
     error_list_head = NULL;
     error_list_tail = NULL;
     error_count = 0;
 }
 
-void add_error(ErrorType type, const char* filename, int line, const char* format, ...)
-{
+void add_error(ErrorType type, const char *filename, int line, const char *format, ...) {
     va_list args;
-    ErrorNode* new_error;
+    ErrorNode *new_error;
 
-    new_error = (ErrorNode*)malloc(sizeof(ErrorNode));
+    new_error = (ErrorNode *) malloc(sizeof(ErrorNode));
     if (new_error == NULL) {
         fprintf(stderr, "Fatal error: Unable to allocate memory for error handling\n");
         exit(1);
@@ -53,9 +50,8 @@ void add_error(ErrorType type, const char* filename, int line, const char* forma
     error_count++;
 }
 
-void print_errors(void)
-{
-    ErrorNode* current = error_list_head;
+void print_errors(void) {
+    ErrorNode *current = error_list_head;
 
     while (current != NULL) {
         fprintf(stderr, "Error in file %s at line %d: ", current->filename, current->line);
@@ -106,20 +102,13 @@ void print_errors(void)
     }
 }
 
-int get_error_count(void)
-{
-    return error_count;
-}
-
-int has_errors(void)
-{
+int has_errors(void) {
     return error_count > 0;
 }
 
-void free_error_handling(void)
-{
-    ErrorNode* current = error_list_head;
-    ErrorNode* next;
+void free_error_handling(void) {
+    ErrorNode *current = error_list_head;
+    ErrorNode *next;
 
     while (current != NULL) {
         next = current->next;
@@ -132,8 +121,7 @@ void free_error_handling(void)
     error_count = 0;
 }
 
-int is_reserved_word(const char* word)
-{
+int is_reserved_word(const char *word) {
     int i;
     for (i = 0; i < NUM_OPCODES; i++) {
         if (strcmp(word, OPCODE_NAMES[i]) == 0) {
@@ -145,51 +133,29 @@ int is_reserved_word(const char* word)
             return 1;
         }
     }
-    /* Check for register names (r0-r7) */
     if (word[0] == 'r' && word[1] >= '0' && word[1] <= '7' && word[2] == '\0') {
         return 1;
     }
     return 0;
 }
 
-int is_label_name(const char* symbol)
-{
+int is_label_name(const char *symbol) {
     return get_symbol_by_name(symbol) != NULL;
 }
 
-int is_macro(const char* symbol)
-{
+int is_macro(const char *symbol) {
     return is_macro_defined(symbol);
 }
 
-int is_entry_extern_conflict(const char* symbol)
-{
-    Symbol* sym = get_symbol_by_name(symbol);
-    return sym && sym->is_entry && sym->is_external;
-}
-
-int is_valid_label_name(const char* label)
-{
+int is_valid_label_name(const char *label) {
     int i;
-    if (!isalpha((int)label[0])) {
+    if (!isalpha((int) label[0])) {
         return 0;
     }
     for (i = 1; label[i] != '\0'; i++) {
-        if (!isalnum((int)label[i])) {
+        if (!isalnum((int) label[i])) {
             return 0;
         }
     }
     return strlen(label) <= MAX_LABEL_LENGTH;
-}
-
-int is_extern(const char* symbol)
-{
-    Symbol* sym = get_symbol_by_name(symbol);
-    return sym && sym->is_external;
-}
-
-int is_entry(const char* symbol)
-{
-    Symbol* sym = get_symbol_by_name(symbol);
-    return sym && sym->is_entry;
 }

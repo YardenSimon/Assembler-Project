@@ -1,15 +1,10 @@
-/* encoder.h */
-
-
 #ifndef ENCODER_H
 #define ENCODER_H
-
 #include "globals.h"
+#define MAX_OPERAND_LENGTH 20
 
-
-/* MachineWord represents a 15-bit word in our assembly language.
- * We use a 16-bit unsigned short, but only utilize the lower 15 bits. */
-typedef unsigned short MachineWord;
+/* MachineWord is a 15-bit value in assembly language.
+ * We store it in a 16-bit unsigned short, but only use in the lower 15 bits. */
 extern int memory_size;
 extern MachineWord *memory;
 
@@ -19,7 +14,7 @@ typedef struct EncodedDataNode {
  struct EncodedDataNode *next;
 } EncodedDataNode;
 
-/* Data structure to store encoded directives */
+/* Data structure to store in all the encoded directives */
 typedef struct {
  EncodedDataNode *head;
  EncodedDataNode *tail;
@@ -42,28 +37,63 @@ typedef enum {
  ADDR_REGISTER
 } AddressingMethod;
 
+/* Structure to hold information about every opcode */
+typedef struct {
+ const char *name;
+ OpCode value;
+} OpcodeInfo;
+
+/* Initializes the encoded data structure.
+* This function sets up an empty linked list for storing encoded directive words.
+* It should be called at the beginning of the assembly process.
+*/
+void init_encoded_data(void);
+
+/*
+ * This function encodes a single assembly instruction into machine code.
+ * It performs the following steps:
+ * Extracts operands from the instruction string
+ * Determines the addressing methods for source and destination operands
+ * Validates the operands
+ * Encodes the opcode and addressing methods into a machine word
+ * Stores the encoded instruction in memory
+ * Encodes the operands separately
+ * The function uses global variables IC and DC to keep track of
+ * instruction and data counters, respectively.
+ */
+void encode_instruction(const char *instruction, OpCode command_name);
+
+/* This function encodes assembly directives (.data and .string) into machine code.
+ * It handles two types of directives:
+ * .data: Encodes a list of integer values
+ * .string: Encodes a string as ASCII values, including a null terminator
+ * The function parses the operands, converts them to appropriate machine words,
+ * and stores them in the encoded data structure. It also performs error checking for invalid input.
+ */
+void encode_directive(const char* directive, const char* operands);
+
+/* Frees the memory allocated for the encoded data structure.*/
+void free_encoded_data(void);
+
+/*
+ * This function determines the addressing method of an operand based on its format.
+ * It recognizes the following addressing methods:
+ * - Immediate: Starts with '#'
+ * - Index: Starts with '*'
+ * - Register: Starts with 'r' followed by a digit (0-7)
+ * - Direct: Any other valid operand
+ * Returns:
+ *   The determined AddressingMethod enum value
+ */
+AddressingMethod get_addressing_method(const char* operand);
+
 /* AREType enum represents the ARE (Absolute, Relocatable, External) bits:
  * ARE_ABSOLUTE (4): The A bit (bit 2) is on, used for constants and instructions
  * ARE_RELOCATABLE (2): The R bit (bit 1) is on, used for relocatable addresses
  * ARE_EXTERNAL (1): The E bit (bit 0) is on, used for external references */
-
-/* Function to initialize the encoded data structure */
-void init_encoded_data(void);
-
-/* Function to add encoded data to the main memory */
-void add_encoded_data_to_memory(void);
-
-/* Function to free the encoded data structure */
-void free_encoded_data(void);
-
-/* Function to encode a single instruction into machine code */
-void encode_instruction(const char* instruction, OpCode command_name);
-void encode_directive(const char* directive, const char* operands);
-
-/* Function to determine the addressing method of an operand */
-AddressingMethod get_addressing_method(const char* operand);
-
-/* Function to set the ARE bits for a word */
 void set_ARE(MachineWord* word, AREType are);
 
-#endif /* ENCODER_H */
+/* Adds a new encoded word to the end of the encoded data list. */
+void add_encoded_data_to_memory(void);
+
+#endif
